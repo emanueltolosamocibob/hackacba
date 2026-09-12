@@ -8,3 +8,8 @@ dist/
 supabase/.branches
 supabase/.temp
 .vercel
+
+# El motor de impeccable: 15 MB por copia y solo windows-x64. El launcher lo
+# busca en ~/.impeccable/bin o lo baja a su cache, asi que no va en git.
+.claude/skills/impeccable/scripts/bin/
+.cursor/skills/impeccable/scripts/bin/
