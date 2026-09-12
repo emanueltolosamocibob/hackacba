@@ -125,8 +125,13 @@ cambiarlo, modificar el nodo; no alcanza con nombrarlo en el System Message.
 LLM. Las únicas entradas elegidas por el modelo son el ID de sesión devuelto por
 la herramienta y la respuesta aritmética. Cada ejecución recibe una actualización
 de Telegram y no comparte memoria conversacional. Los grupos y mensajes sin
-texto se descartan. Los mensajes distintos de `/patente DOMINIO` reciben ayuda
-sin llamar al modelo.
+texto se descartan. `preparar-consulta.mjs` reconoce `/patente DOMINIO`, una patente
+sola y consultas ITV como «¿Cuándo vence la ITV de AB672VT?». Se consulta un solo
+vehículo por mensaje. Patentes inválidas, datos faltantes, comandos desconocidos
+y fuentes no conectadas tienen respuestas específicas sin llamar al modelo.
+La detección usa reglas, no ofrece conversación abierta ni recuerda la patente
+del mensaje anterior. El agente recibe solo la patente validada; no recibe las
+instrucciones adicionales que un usuario agregue al texto.
 
 ## 3. Instrucción de sistema
 
@@ -171,6 +176,8 @@ código ni selectores proporcionados por el modelo.
 ## Validación y límites
 
 ```sh
+npm run n8n:generar
+npm run n8n:test
 npm run itv:test
 npm run verificar:tipos
 ```
@@ -198,3 +205,13 @@ Referencias:
 - [OpenAI Chat Model](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai)
 - [HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest)
 - [Function calling](https://developers.openai.com/api/docs/guides/function-calling)
+
+### Corrección de entrada (2026-09-12)
+
+Se reemplazó la ayuda única por respuestas según el caso y se publicó la versión
+«ITV — preguntas naturales y errores específicos». En Telegram se verificó
+`/patente AB672VT` (consulta a las 05:37:22 UTC), y después de publicar
+«¿Cuándo vence la ITV de AB672VT?» (05:41:30 UTC). Ambas devolvieron
+inspección 31/07/26, vencimiento 31/07/27 y estado No Vencida.
+Las pruebas del enrutador cubren comandos, preguntas, datos inválidos, varias
+patentes, fuentes no conectadas y el código generado para n8n.
