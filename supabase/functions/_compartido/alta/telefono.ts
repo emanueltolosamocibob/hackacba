@@ -35,13 +35,14 @@ export function validarTelefonoArgentino(valor: string): TelefonoValidado | null
 /**
  * El identificador que espera WAHA para armar un chatId (`<digitos>@c.us`).
  *
- * Nota de riesgo: no se verifico contra la instancia WAHA real con un numero
- * de prueba (no se proveyo ninguno). Se preserva el prefijo tal cual vino
- * (con o sin "9"); si en la practica WAHA/WhatsApp Web necesita otra forma
- * para moviles argentinos, ajustar aca, no en cada llamador.
+ * Los JID de WhatsApp para moviles argentinos son siempre "549" + los diez
+ * digitos nacionales, sin importar si quien escribio el numero incluyo el
+ * "9" o no: es una convencion del protocolo, no del formato E.164 de origen.
+ * Un chatId "54351...' (sin el "9") no entrega. Por eso aca se fuerza el
+ * "549" siempre, independiente de lo que haya matcheado `validarTelefonoArgentino`.
  */
 export function telefonoParaWaha(valor: string): string | null {
   const validado = validarTelefonoArgentino(valor);
   if (!validado) return null;
-  return validado.e164.slice(1); // sin el "+"
+  return `549${validado.digitosNacionales}`;
 }

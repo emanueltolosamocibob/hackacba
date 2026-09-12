@@ -27,7 +27,11 @@ const EsquemaPayload = z.object({
     })
     .passthrough(),
   sms: z.object({
-    otp: z.string().min(1),
+    // Defensa en profundidad: nunca deberia llegar otra cosa que digitos,
+    // pero si algo mas se cuela (inyeccion, un proveedor que cambio el
+    // formato) se rechaza aca con el mismo 400 generico, antes de pasarlo a
+    // WAHA como texto.
+    otp: z.string().regex(/^\d{4,10}$/, 'El OTP debe ser solo digitos, de 4 a 10'),
   }),
 });
 

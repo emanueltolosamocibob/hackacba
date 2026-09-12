@@ -79,6 +79,15 @@ Deno.test('verificarHookSms rechaza un payload que no cumple el esquema', async 
   await assertRejects(() => verificarHookSms(cuerpo, headers, SECRETO), ErrorVerificacion);
 });
 
+Deno.test('verificarHookSms rechaza un OTP que no son solo digitos', async () => {
+  const cuerpo = JSON.stringify({
+    user: { id: 'user-1', phone: '+5493511234567' },
+    sms: { otp: '12ab56' },
+  });
+  const headers = await headersValidos(cuerpo, 'msg_otp_invalido');
+  await assertRejects(() => verificarHookSms(cuerpo, headers, SECRETO), ErrorVerificacion);
+});
+
 Deno.test('verificarHookSms rechaza un cuerpo que no es JSON', async () => {
   const cuerpo = 'esto no es json';
   const headers = await headersValidos(cuerpo, 'msg_no_json');

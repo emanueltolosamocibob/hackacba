@@ -40,8 +40,12 @@ Deno.test('rechaza texto que no es un telefono', () => {
   assertEquals(validarTelefonoArgentino(''), null);
 });
 
-Deno.test('telefonoParaWaha devuelve los digitos sin el signo +', () => {
+Deno.test('telefonoParaWaha siempre antepone 549, aunque el numero ya traiga el 9', () => {
   assertEquals(telefonoParaWaha('+5493511234567'), '5493511234567');
+});
+
+Deno.test('telefonoParaWaha antepone 549 aunque el numero no traiga el 9', () => {
+  assertEquals(telefonoParaWaha('+543511234567'), '5493511234567');
 });
 
 Deno.test('telefonoParaWaha rechaza un telefono invalido', () => {
