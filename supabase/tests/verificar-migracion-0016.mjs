@@ -21,6 +21,7 @@ const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const MIGRACION_0016 = path.join(RAIZ, 'supabase', 'migrations', '0016_vinculos_chat_neutral.sql');
 const MIGRACION_0017 = path.join(RAIZ, 'supabase', 'migrations', '0017_remediar_vinculos_chat.sql');
 const HASH_0016 = 'a72d871113841cf44a8bad15eeea719a442a3946b07d1d96d485a193e8796c0f';
+const HASH_0017 = '589fd8bb6c54e7e12577c82c9da5a1bc23fdc0031b0f47877e37d6a78e37f61b';
 const URL_PRUEBA = process.env.SUPABASE_MIGRATION_TEST_URL;
 
 if (!URL_PRUEBA) {
@@ -90,9 +91,14 @@ function consultar(proyecto, sql) {
   return ejecutar(['db', 'query', '--db-url', URL_PRUEBA, '--output', 'csv', sql], { proyecto }).stdout.trim();
 }
 
-const contenido0016 = await readFile(MIGRACION_0016);
-const hash0016 = createHash('sha256').update(contenido0016).digest('hex');
-if (hash0016 !== HASH_0016) throw new Error(`0016 no es el archivo aplicado: ${hash0016}`);
+async function verificarHash(archivo, esperado) {
+  const contenido = await readFile(archivo);
+  const real = createHash('sha256').update(contenido).digest('hex');
+  if (real !== esperado) throw new Error(`${path.basename(archivo)} no es el archivo aplicado: ${real}`);
+}
+
+await verificarHash(MIGRACION_0016, HASH_0016);
+await verificarHash(MIGRACION_0017, HASH_0017);
 
 console.log('\x1b[1mPrueba historica local de 0016\x1b[0m');
 
@@ -103,7 +109,7 @@ try {
   aplicarPendientes(proyecto);
   await agregarMigracion(proyecto, MIGRACION_0017);
   aplicarPendientes(proyecto);
-  console.log('  \x1b[32mOK\x1b[0m   0016 exacta y 0017 aplican sobre una base vacia en 0015');
+  console.log('  \x1b[32mOK\x1b[0m   0016 exacta y 0017 exacta aplican sobre una base vacia en 0015');
 
   reiniciarEn0015(proyecto);
   consultar(proyecto, `insert into auth.users (id, aud, role, email)
