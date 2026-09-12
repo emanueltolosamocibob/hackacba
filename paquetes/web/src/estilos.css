@@ -1,0 +1,19 @@
+/* Provisional: legibilidad, no diseno. FlotaBot todavia no tiene paleta ni
+   tipografia definidas (ver PRODUCT.md), asi que aca no hay ninguna decision
+   de marca que despues haya que desarmar. */
+
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}

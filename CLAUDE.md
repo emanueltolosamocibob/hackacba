@@ -5,11 +5,13 @@ impuesto automotor de Rentas Córdoba, tasa municipal, seguro, VTV, GNC, multas.
 El problema no es contabilidad, es **no perder un vencimiento**.
 
 **Estado: el backend está terminado y verificado. El bot de Telegram está
-construido y falta desplegarlo.** Más adelante, una Mini App en React + TS.
+construido y falta desplegarlo.** La web tiene un scaffold que compila y se
+despliega en Vercel, todavía sin diseñar.
 
 - [README.md](README.md) — modelo de datos y puesta en marcha
 - [BOT.md](BOT.md) — el bot: superficie de la API, alta de usuarios, despacho
   de avisos y la puesta en marcha
+- [PRODUCT.md](PRODUCT.md) — qué es el producto y qué decisiones están tomadas
 
 ---
 
@@ -94,6 +96,9 @@ npm run estado           # panel con lo que hay en la base ahora mismo
 npm run verificar:todo   # las cuatro baterías + chequeo de tipos
 npm run bot:desplegar    # publicar las tres Edge Functions
 npm run bot:tipos        # deno check de las funciones (necesita Deno instalado)
+npm run web:dev          # dev server de la web en http://localhost:5173
+npm run web:construir    # build de producción a paquetes/web/dist
+npm run web:tipos        # chequeo de tipos de la web
 ```
 
 `.env` (gitignored) tiene `SUPABASE_URL`, `SUPABASE_ANON_KEY` y
@@ -120,6 +125,8 @@ supabase/functions/    el bot: telegram (webhook), agente (tool calling con
                        Claude), despachar-avisos, y _compartido/
 herramientas/          estado.mjs — panel de lo que hay en la base
 paquetes/compartido/   tipos generados del esquema + esquemas zod + helpers
+paquetes/web/          la web: scaffold Vite + React + TS con las dos rutas de
+                       PRODUCT.md, sin diseñar. vercel.json en la raíz
 ```
 
 **La lógica de negocio sigue viviendo en Postgres, no en las funciones.** Las
