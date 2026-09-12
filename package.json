@@ -1,0 +1,23 @@
+{
+  "name": "gestion-flota",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Gestion de pagos y vencimientos de flotas de vehiculos",
+  "workspaces": [
+    "paquetes/*"
+  ],
+  "scripts": {
+    "db:push": "supabase db push",
+    "db:estado": "supabase migration list",
+    "db:tipos": "supabase gen types typescript --linked > paquetes/compartido/src/tipos.ts",
+    "verificar": "node --env-file=.env supabase/tests/verificar.mjs",
+    "verificar:realtime": "node --env-file=.env supabase/tests/verificar-realtime.mjs",
+    "verificar:tipos": "tsc --noEmit --project paquetes/compartido/tsconfig.json",
+    "verificar:todo": "npm run verificar && npm run verificar:realtime && npm run verificar:tipos",
+    "demo": "node --env-file=.env supabase/semillas/demo.mjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "typescript": "^5.9.3"
+  }
+}
