@@ -24,6 +24,9 @@
     "alta:desplegar": "supabase functions deploy enviar-otp-whatsapp finalizar-alta-landing",
     "alta:tipos": "deno check supabase/functions/enviar-otp-whatsapp/index.ts supabase/functions/finalizar-alta-landing/index.ts",
     "alta:pruebas": "deno test --allow-env supabase/functions/_pruebas/",
+    "verificar:bot-whatsapp": "node --env-file=.env supabase/tests/verificar-bot-whatsapp.mjs",
+    "bot-wa:desplegar": "supabase functions deploy wa-webhook --no-verify-jwt",
+    "bot-wa:tipos": "deno check supabase/functions/wa-webhook/index.ts",
     "web:dev": "npm run dev --workspace @flota/web",
     "web:construir": "npm run construir --workspace @flota/web",
     "web:tipos": "npm run tipos --workspace @flota/web"
