@@ -1,6 +1,7 @@
 // =============================================================================
 // Verifica el alta de usuarios desde el bot: invitaciones, canje por telefono
-// verificado y por codigo, y los limites de quien puede hacer que.
+// verificado y por codigo, y los limites de quien puede hacer que. El vinculo
+// es neutral por canal: esta bateria usa WhatsApp, no objetos de Telegram.
 //
 // Es la frontera de quien entra a una flota, asi que se prueba tanto lo que
 // tiene que funcionar como lo que tiene que fallar.
@@ -46,6 +47,8 @@ const rest = (ruta, o) => api(`/rest/v1${ruta}`, o);
 const rpc  = (fn, args, o) => api(`/rest/v1/rpc/${fn}`, { metodo: 'POST', cuerpo: args, ...o });
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));
+const organizacionesCreadas = [];
+const usuariosCreados = [];
 
 // La API de Auth devuelve 429 y 504 esporadicos cuando se crean varios usuarios
 // seguidos. Es infraestructura, no logica: se reintenta con espera creciente.
@@ -61,13 +64,17 @@ async function conReintento(etiqueta, fn, intentos = 4) {
   throw new Error(`${etiqueta}: ${ultimo.estado} ${JSON.stringify(ultimo.datos)}`);
 }
 
-async function crearUsuario(email) {
+async function crearUsuario(email, telefono = null) {
   const clave = `Prueba-${crypto.randomUUID()}`;
   const alta = await conReintento(`crear ${email}`, () =>
     api('/auth/v1/admin/users', {
       metodo: 'POST', servicio: true,
-      cuerpo: { email, password: clave, email_confirm: true },
+      cuerpo: {
+        email, password: clave, email_confirm: true,
+        ...(telefono ? { phone: telefono, phone_confirm: true } : {}),
+      },
     }));
+  usuariosCreados.push({ id: alta.datos.id, email });
   const ses = await conReintento(`login ${email}`, () =>
     api('/auth/v1/token?grant_type=password', {
       metodo: 'POST', token: ANON, cuerpo: { email, password: clave },
@@ -78,12 +85,23 @@ async function crearUsuario(email) {
 const sello = Date.now();
 console.log(`\x1b[1mVerificacion del alta de usuarios contra ${URL_BASE}\x1b[0m`);
 
+const sufijoTelefono = String(sello).slice(-7);
+const telefonoPrueba = indice => `+549${String(300 + indice).slice(-3)}${sufijoTelefono}`;
+const identificadorDe = telefono => `${telefono.replace(/^\+549/, '')}@whatsapp`;
+const codigoPrueba = indice => `${String(sello).slice(-10)}${String(indice).padStart(2, '0')}`;
+
+const TEL_CARGADO = '+54 9 351 123-4567';
+const TEL_VERIFICADO = '+5493511234567';
+const CANAL = 'whatsapp';
+const IDENTIFICADOR = '3511234567@whatsapp';
+
 // ---------------------------------------------------------------- escenario
 
+try {
 const duenoA = await crearUsuario(`alta-duenoa-${sello}@flota.test`);
 const duenoB = await crearUsuario(`alta-duenob-${sello}@flota.test`);
 // El administrativo invitado: el bot le crea la cuenta al vincularlo.
-const invitado = await crearUsuario(`alta-admin-${sello}@flota.test`);
+const invitado = await crearUsuario(`alta-admin-${sello}@flota.test`, TEL_VERIFICADO);
 
 async function montar(u, nombre) {
   const orgId = crypto.randomUUID();
@@ -92,17 +110,12 @@ async function montar(u, nombre) {
     cuerpo: { id: orgId, nombre },
   });
   if (!alta.ok) throw new Error(`org: ${JSON.stringify(alta.datos)}`);
+  organizacionesCreadas.push(orgId);
   return orgId;
 }
 
 const orgA = await montar(duenoA, `Alta A ${sello}`);
 const orgB = await montar(duenoB, `Alta B ${sello}`);
-
-// Numeros de prueba: el mismo numero escrito de tres formas distintas.
-const TEL_CARGADO   = '+54 9 351 123-4567';   // como lo tipea el admin
-const TEL_VERIFICADO = '5493511234567';       // como lo manda Telegram
-const TG_ID = 900000000 + (sello % 1000000);
-const CHAT  = TG_ID;
 
 seccion('0. Normalizacion de telefonos');
 
@@ -137,6 +150,12 @@ const propietario = await rpc('crear_invitacion', {
 }, { token: duenoA.token });
 ok('No se puede invitar como propietario', !propietario.ok, `estado ${propietario.estado}`);
 
+const propietarioSistema = await rpc('crear_invitacion', {
+  p_organizacion_id: orgA, p_rol: 'propietario', p_telefono: '+5493519997777',
+}, { servicio: true });
+ok('Ni el servidor puede emitir una invitacion pendiente de propietario',
+   !propietarioSistema.ok, `estado ${propietarioSistema.estado}`);
+
 const sinContacto = await rpc('crear_invitacion', {
   p_organizacion_id: orgA, p_rol: 'operador',
 }, { token: duenoA.token });
@@ -157,14 +176,14 @@ seccion('2. Quien puede canjear');
 
 const canjeUsuario = await rpc('canjear_por_telefono', {
   p_telefono_verificado: TEL_VERIFICADO, p_usuario_id: invitado.id,
-  p_telegram_user_id: TG_ID, p_chat_id: CHAT,
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
 }, { token: invitado.token });
 ok('Un usuario autenticado no puede canjear por su cuenta',
    !canjeUsuario.ok, `estado ${canjeUsuario.estado}`);
 
 const canjeAnon = await rpc('canjear_por_telefono', {
   p_telefono_verificado: TEL_VERIFICADO, p_usuario_id: invitado.id,
-  p_telegram_user_id: TG_ID, p_chat_id: CHAT,
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
 }, { token: ANON });
 ok('Un anonimo tampoco', !canjeAnon.ok, `estado ${canjeAnon.estado}`);
 
@@ -172,22 +191,33 @@ seccion('3. Canje por telefono verificado (lo hace el bot)');
 
 const canje = await rpc('canjear_por_telefono', {
   p_telefono_verificado: TEL_VERIFICADO, p_usuario_id: invitado.id,
-  p_telegram_user_id: TG_ID, p_chat_id: CHAT, p_nombre_telegram: 'Admin Prueba',
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR, p_nombre_mostrado: 'Admin Prueba',
 }, { servicio: true });
 ok('El bot canjea con service_role', canje.ok, JSON.stringify(canje.datos));
 ok('"+54 9 351 123-4567" matchea con "5493511234567"',
    canje.datos?.organizacion_id === orgA, JSON.stringify(canje.datos));
 ok('Queda con el rol de la invitacion', canje.datos?.rol === 'administrador', JSON.stringify(canje.datos));
 
+const vinculoCanonico = await rest(
+  `/vinculos_chat?select=identificador_externo,jid_crudo,nombre_mostrado&usuario_id=eq.${invitado.id}`,
+  { servicio: true },
+);
+ok('El identificador canonico no se copia al JID crudo',
+   vinculoCanonico.datos?.[0]?.identificador_externo === IDENTIFICADOR
+     && vinculoCanonico.datos?.[0]?.jid_crudo === null,
+   JSON.stringify(vinculoCanonico.datos));
+
 const repetido = await rpc('canjear_por_telefono', {
   p_telefono_verificado: TEL_VERIFICADO, p_usuario_id: invitado.id,
-  p_telegram_user_id: TG_ID, p_chat_id: CHAT,
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
 }, { servicio: true });
 ok('La invitacion es de un solo uso', !repetido.ok, `estado ${repetido.estado}`);
 
+const telefonoDesconocido = telefonoPrueba(1);
+const usuarioDesconocido = await crearUsuario(`alta-desconocido-${sello}@flota.test`, telefonoDesconocido);
 const desconocido = await rpc('canjear_por_telefono', {
-  p_telefono_verificado: '5493519999999', p_usuario_id: invitado.id,
-  p_telegram_user_id: TG_ID + 1, p_chat_id: CHAT,
+  p_telefono_verificado: telefonoDesconocido, p_usuario_id: usuarioDesconocido.id,
+  p_canal: CANAL, p_identificador_externo: identificadorDe(telefonoDesconocido),
 }, { servicio: true });
 ok('Un numero sin invitacion no entra', !desconocido.ok, `estado ${desconocido.estado}`);
 
@@ -204,37 +234,46 @@ const creaFlota = await rest('/flotas', {
 });
 ok('Como administrador ya puede crear flotas', creaFlota.ok, `estado ${creaFlota.estado}`);
 
-seccion('5. vinculos_telegram no se expone');
+seccion('5. vinculos_chat no entrega filas a clientes');
 
-const vinculoAnon = await rest('/vinculos_telegram?select=*', { token: ANON });
-ok('anon no puede leer vinculos_telegram',
+const vinculoAnon = await rest('/vinculos_chat?select=*', { token: ANON });
+ok('anon no obtiene filas de vinculos_chat',
    !vinculoAnon.ok || (Array.isArray(vinculoAnon.datos) && vinculoAnon.datos.length === 0),
    `estado ${vinculoAnon.estado} ${JSON.stringify(vinculoAnon.datos)?.slice(0, 80)}`);
 
-const vinculoUsuario = await rest('/vinculos_telegram?select=*', { token: invitado.token });
-ok('un usuario autenticado tampoco',
+const vinculoUsuario = await rest('/vinculos_chat?select=*', { token: invitado.token });
+ok('un usuario autenticado tampoco obtiene filas',
    !vinculoUsuario.ok || (Array.isArray(vinculoUsuario.datos) && vinculoUsuario.datos.length === 0),
    `estado ${vinculoUsuario.estado}`);
 
 seccion('6. Contexto del chat');
 
-const ctx = await rpc('contexto_telegram', { p_telegram_user_id: TG_ID }, { servicio: true });
-ok('Devuelve el vinculo', ctx.datos?.vinculado === true, JSON.stringify(ctx.datos));
+const ctx = await rpc('contexto_chat', {
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
+}, { servicio: true });
+ok('Devuelve el canal y el identificador, no un chat_id de Telegram',
+   ctx.datos?.vinculado === true && ctx.datos?.canal === CANAL
+     && ctx.datos?.identificador_externo === IDENTIFICADOR && !('chat_id' in (ctx.datos || {})),
+   JSON.stringify(ctx.datos));
 ok('Con la organizacion activa correcta',
    ctx.datos?.organizacion_activa?.id === orgA, JSON.stringify(ctx.datos?.organizacion_activa));
 ok('Y el rol', ctx.datos?.organizacion_activa?.rol === 'administrador');
 
-const ctxDesconocido = await rpc('contexto_telegram', { p_telegram_user_id: 1 }, { servicio: true });
+const ctxDesconocido = await rpc('contexto_chat', {
+  p_canal: CANAL, p_identificador_externo: '0000000001@whatsapp',
+}, { servicio: true });
 ok('Un chat sin vincular devuelve vinculado:false',
    ctxDesconocido.datos?.vinculado === false, JSON.stringify(ctxDesconocido.datos));
 
-const ctxUsuario = await rpc('contexto_telegram', { p_telegram_user_id: TG_ID }, { token: invitado.token });
-ok('contexto_telegram no es llamable por un usuario', !ctxUsuario.ok, `estado ${ctxUsuario.estado}`);
+const ctxUsuario = await rpc('contexto_chat', {
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
+}, { token: invitado.token });
+ok('contexto_chat no es llamable por un usuario', !ctxUsuario.ok, `estado ${ctxUsuario.estado}`);
 
 seccion('7. Cambio de organizacion activa');
 
 const cambioIlegal = await rpc('cambiar_organizacion_activa', {
-  p_telegram_user_id: TG_ID, p_organizacion_id: orgB,
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR, p_organizacion_id: orgB,
 }, { servicio: true });
 ok('No puede activar una organizacion de la que no es miembro',
    !cambioIlegal.ok, `estado ${cambioIlegal.estado}`);
@@ -245,26 +284,32 @@ const invB = await rpc('crear_invitacion', {
 }, { token: duenoB.token });
 await rpc('canjear_invitacion', {
   p_codigo: invB.datos.codigo, p_usuario_id: invitado.id,
-  p_telegram_user_id: TG_ID, p_chat_id: CHAT,
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
 }, { servicio: true });
 
-const ctx2 = await rpc('contexto_telegram', { p_telegram_user_id: TG_ID }, { servicio: true });
+const ctx2 = await rpc('contexto_chat', {
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
+}, { servicio: true });
 ok('El canje por codigo tambien funciona',
    (ctx2.datos?.organizaciones || []).length === 2, JSON.stringify(ctx2.datos?.organizaciones));
 ok('Y deja activa la organizacion recien canjeada',
    ctx2.datos?.organizacion_activa?.id === orgB);
 
 const cambioValido = await rpc('cambiar_organizacion_activa', {
-  p_telegram_user_id: TG_ID, p_organizacion_id: orgA,
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR, p_organizacion_id: orgA,
 }, { servicio: true });
 ok('Puede volver a la organizacion A', cambioValido.ok, JSON.stringify(cambioValido.datos));
 
 seccion('8. Desvincular');
 
-const desv = await rpc('desvincular_telegram', { p_telegram_user_id: TG_ID }, { servicio: true });
+const desv = await rpc('desvincular_chat', {
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
+}, { servicio: true });
 ok('Desvincula el chat', desv.datos === true, JSON.stringify(desv.datos));
 
-const ctx3 = await rpc('contexto_telegram', { p_telegram_user_id: TG_ID }, { servicio: true });
+const ctx3 = await rpc('contexto_chat', {
+  p_canal: CANAL, p_identificador_externo: IDENTIFICADOR,
+}, { servicio: true });
 ok('El chat queda sin vinculo', ctx3.datos?.vinculado === false);
 
 const sigueAdentro = await rest('/organizaciones?select=id', { token: invitado.token });
@@ -291,71 +336,297 @@ const inventada = await rest('/invitaciones', {
 ok('Nadie puede insertar una invitacion con un codigo elegido a mano',
    !inventada.ok, `estado ${inventada.estado}`);
 
-seccion('10. Alta de una organizacion nueva (el arranque real)');
+seccion('10. Canje atomico bajo contencion');
 
-const TEL_NUEVO = '+54 351 400 1234';
-
-const noSistema = await rpc('registrar_organizacion', {
-  p_nombre: 'Intento', p_telefono_admin: TEL_NUEVO,
+const orgCarrera = await montar(duenoA, `Carrera ${sello}`);
+const invitacionCarrera = await rpc('crear_invitacion', {
+  p_organizacion_id: orgCarrera, p_email: `carrera-${sello}@flota.test`,
 }, { token: duenoA.token });
-ok('Un usuario no puede registrar organizaciones', !noSistema.ok, `estado ${noSistema.estado}`);
+const telefonoCarreraA = telefonoPrueba(2);
+const telefonoCarreraB = telefonoPrueba(3);
+const usuarioCarreraA = await crearUsuario(`alta-carrera-a-${sello}@flota.test`, telefonoCarreraA);
+const usuarioCarreraB = await crearUsuario(`alta-carrera-b-${sello}@flota.test`, telefonoCarreraB);
+const candidatosCarrera = [
+  [usuarioCarreraA, telefonoCarreraA],
+  [usuarioCarreraB, telefonoCarreraB],
+];
 
-const alta = await rpc('registrar_organizacion', {
-  p_nombre: `Flota Nueva ${sello}`,
-  p_telefono_admin: TEL_NUEVO,
-  p_email_admin: `nuevo-${sello}@flota.test`,
+const resultadosCarrera = await Promise.all(Array.from({ length: 20 }, (_, indice) => {
+  const [usuario, telefono] = candidatosCarrera[indice % candidatosCarrera.length];
+  return rpc('canjear_invitacion', {
+    p_codigo: invitacionCarrera.datos?.codigo,
+    p_usuario_id: usuario.id,
+    p_canal: CANAL,
+    p_identificador_externo: identificadorDe(telefono),
+  }, { servicio: true });
+}));
+
+const exitosCarrera = resultadosCarrera.filter(resultado => resultado.ok);
+ok('Una sola ejecucion gana el canje concurrente', exitosCarrera.length === 1,
+   `${exitosCarrera.length} exitos`);
+
+const estadoCarrera = await rest(
+  `/invitaciones?select=usada_en,usada_por&id=eq.${invitacionCarrera.datos?.invitacion_id}`,
+  { servicio: true },
+);
+const idsCarrera = `${usuarioCarreraA.id},${usuarioCarreraB.id}`;
+const miembrosCarrera = await rest(
+  `/miembros?select=usuario_id&organizacion_id=eq.${orgCarrera}&usuario_id=in.(${idsCarrera})`,
+  { servicio: true },
+);
+const vinculosCarrera = await rest(
+  `/vinculos_chat?select=usuario_id&usuario_id=in.(${idsCarrera})`,
+  { servicio: true },
+);
+ok('La carrera deja una invitacion usada por un unico ganador',
+   estadoCarrera.datos?.length === 1 && estadoCarrera.datos[0].usada_en !== null
+     && [usuarioCarreraA.id, usuarioCarreraB.id].includes(estadoCarrera.datos[0].usada_por),
+   JSON.stringify(estadoCarrera.datos));
+ok('La carrera deja una sola membresia nueva', miembrosCarrera.datos?.length === 1,
+   JSON.stringify(miembrosCarrera.datos));
+ok('La carrera deja un solo vinculo nuevo', vinculosCarrera.datos?.length === 1,
+   JSON.stringify(vinculosCarrera.datos));
+
+const ganadorCarrera = estadoCarrera.datos?.[0]?.usada_por;
+const perdedorCarrera = [usuarioCarreraA.id, usuarioCarreraB.id].find(id => id !== ganadorCarrera);
+ok('El perdedor no recibe membresia ni vinculo',
+   !miembrosCarrera.datos?.some(fila => fila.usuario_id === perdedorCarrera)
+     && !vinculosCarrera.datos?.some(fila => fila.usuario_id === perdedorCarrera));
+
+seccion('11. Colisiones se rechazan antes de mutar');
+
+const telefonoColision = telefonoPrueba(4);
+const usuarioColision = await crearUsuario(`alta-colision-${sello}@flota.test`, telefonoColision);
+const identificadorColision = identificadorDe(telefonoColision);
+const vinculoAjeno = await rest('/vinculos_chat', {
+  servicio: true, metodo: 'POST', prefer: 'return=minimal',
+  cuerpo: {
+    usuario_id: duenoA.id,
+    canal: CANAL,
+    identificador_externo: identificadorColision,
+    jid_crudo: null,
+    organizacion_activa_id: orgA,
+  },
+});
+if (!vinculoAjeno.ok) throw new Error(`vinculo de colision: ${JSON.stringify(vinculoAjeno.datos)}`);
+
+const invitacionColision = await rpc('crear_invitacion', {
+  p_organizacion_id: orgB, p_email: `colision-${sello}@flota.test`,
+}, { token: duenoB.token });
+const canjeColision = await rpc('canjear_invitacion', {
+  p_codigo: invitacionColision.datos?.codigo,
+  p_usuario_id: usuarioColision.id,
+  p_canal: CANAL,
+  p_identificador_externo: identificadorColision,
+}, { servicio: true });
+ok('Un identificador de otro usuario falla con identidad_en_uso',
+   !canjeColision.ok && canjeColision.datos?.details === 'identidad_en_uso',
+   JSON.stringify(canjeColision.datos));
+
+const estadoColision = await rest(
+  `/invitaciones?select=usada_en,usada_por&id=eq.${invitacionColision.datos?.invitacion_id}`,
+  { servicio: true },
+);
+const miembroColision = await rest(
+  `/miembros?select=id&organizacion_id=eq.${orgB}&usuario_id=eq.${usuarioColision.id}`,
+  { servicio: true },
+);
+const vinculoColision = await rest(
+  `/vinculos_chat?select=id&usuario_id=eq.${usuarioColision.id}`,
+  { servicio: true },
+);
+ok('La colision deja la invitacion pendiente', estadoColision.datos?.[0]?.usada_en === null,
+   JSON.stringify(estadoColision.datos));
+ok('La colision no deja membresia ni vinculo parcial',
+   miembroColision.datos?.length === 0 && vinculoColision.datos?.length === 0,
+   `${JSON.stringify(miembroColision.datos)} ${JSON.stringify(vinculoColision.datos)}`);
+
+seccion('12. Invitaciones no disponibles no mutan');
+
+const orgEstados = await montar(duenoA, `Estados ${sello}`);
+const telefonoEstados = telefonoPrueba(5);
+const usuarioEstados = await crearUsuario(`alta-estados-${sello}@flota.test`, telefonoEstados);
+const estados = [
+  { nombre: 'anulada', codigo: codigoPrueba(1), anulada: true,
+    expira_en: new Date(Date.now() + 86_400_000).toISOString() },
+  { nombre: 'vencida', codigo: codigoPrueba(2), anulada: false,
+    expira_en: new Date(Date.now() - 86_400_000).toISOString() },
+  { nombre: 'usada', codigo: codigoPrueba(3), anulada: false,
+    expira_en: new Date(Date.now() + 86_400_000).toISOString(),
+    usada_en: new Date().toISOString(), usada_por: duenoA.id },
+];
+
+for (const estado of estados) {
+  const altaEstado = await rest('/invitaciones', {
+    servicio: true, metodo: 'POST', prefer: 'return=minimal',
+    cuerpo: {
+      organizacion_id: orgEstados,
+      codigo: estado.codigo,
+      email: `${estado.nombre}-${sello}@flota.test`,
+      rol: 'lector',
+      expira_en: estado.expira_en,
+      anulada: estado.anulada,
+      usada_en: estado.usada_en,
+      usada_por: estado.usada_por,
+    },
+  });
+  if (!altaEstado.ok) throw new Error(`invitacion ${estado.nombre}: ${JSON.stringify(altaEstado.datos)}`);
+
+  const resultado = await rpc('canjear_invitacion', {
+    p_codigo: estado.codigo,
+    p_usuario_id: usuarioEstados.id,
+    p_canal: CANAL,
+    p_identificador_externo: identificadorDe(telefonoEstados),
+  }, { servicio: true });
+  ok(`Una invitacion ${estado.nombre} se rechaza`, !resultado.ok, JSON.stringify(resultado.datos));
+}
+
+const miembroEstados = await rest(
+  `/miembros?select=id&organizacion_id=eq.${orgEstados}&usuario_id=eq.${usuarioEstados.id}`,
+  { servicio: true },
+);
+const vinculoEstados = await rest(
+  `/vinculos_chat?select=id&usuario_id=eq.${usuarioEstados.id}`,
+  { servicio: true },
+);
+ok('Los rechazos de estado no dejan escrituras parciales',
+   miembroEstados.datos?.length === 0 && vinculoEstados.datos?.length === 0);
+
+seccion('13. Identidad Auth, canonico y limites de nombre');
+
+const casosNombre = [
+  { etiqueta: 'un caracter', entrada: ' X ', esperado: 'X', valido: true },
+  { etiqueta: '120 caracteres', entrada: 'N'.repeat(120), esperado: 'N'.repeat(120), valido: true },
+  { etiqueta: 'vacio', entrada: '   ', valido: false },
+  { etiqueta: '121 caracteres', entrada: 'N'.repeat(121), valido: false },
+];
+const usuariosNombre = [];
+
+for (const [indice, caso] of casosNombre.entries()) {
+  const telefono = telefonoPrueba(10 + indice);
+  const usuario = await crearUsuario(`alta-nombre-${indice}-${sello}@flota.test`, telefono);
+  const invitacion = await rpc('crear_invitacion', {
+    p_organizacion_id: orgA, p_email: `nombre-${indice}-${sello}@flota.test`,
+  }, { token: duenoA.token });
+  const resultado = await rpc('canjear_invitacion', {
+    p_codigo: invitacion.datos?.codigo,
+    p_usuario_id: usuario.id,
+    p_canal: CANAL,
+    p_identificador_externo: identificadorDe(telefono),
+    p_nombre_mostrado: caso.entrada,
+  }, { servicio: true });
+
+  usuariosNombre.push({ usuario, telefono, invitacion, caso, resultado });
+  ok(`Nombre ${caso.etiqueta}: ${caso.valido ? 'se acepta' : 'se rechaza antes de mutar'}`,
+     caso.valido
+       ? resultado.ok
+       : !resultado.ok && resultado.datos?.details === 'nombre_fuera_de_rango',
+     JSON.stringify(resultado.datos));
+}
+
+for (const { usuario, invitacion, caso } of usuariosNombre) {
+  const vinculo = await rest(
+    `/vinculos_chat?select=nombre_mostrado,jid_crudo&usuario_id=eq.${usuario.id}`,
+    { servicio: true },
+  );
+  const estadoInvitacion = await rest(
+    `/invitaciones?select=usada_en&id=eq.${invitacion.datos?.invitacion_id}`,
+    { servicio: true },
+  );
+  const membresia = await rest(
+    `/miembros?select=id&organizacion_id=eq.${orgA}&usuario_id=eq.${usuario.id}`,
+    { servicio: true },
+  );
+
+  if (caso.valido) {
+    ok(`Nombre ${caso.etiqueta}: persiste exactamente despues de btrim`,
+       vinculo.datos?.[0]?.nombre_mostrado === caso.esperado
+         && vinculo.datos?.[0]?.jid_crudo === null,
+       JSON.stringify(vinculo.datos));
+  } else {
+    ok(`Nombre ${caso.etiqueta}: no consume invitacion ni crea filas`,
+       estadoInvitacion.datos?.[0]?.usada_en === null
+         && vinculo.datos?.length === 0 && membresia.datos?.length === 0,
+       `${JSON.stringify(estadoInvitacion.datos)} ${JSON.stringify(vinculo.datos)}`);
+  }
+}
+
+const casoCanonico = usuariosNombre.find(item => !item.caso.valido);
+const identificadorNoCanonico = await rpc('canjear_invitacion', {
+  p_codigo: casoCanonico.invitacion.datos?.codigo,
+  p_usuario_id: casoCanonico.usuario.id,
+  p_canal: CANAL,
+  p_identificador_externo: `raw-${sello}@s.whatsapp.net`,
+  p_nombre_mostrado: 'Nombre valido',
+}, { servicio: true });
+ok('Un JID crudo no puede ocupar el identificador canonico',
+   !identificadorNoCanonico.ok && identificadorNoCanonico.datos?.details === 'identificador_no_canonico',
+   JSON.stringify(identificadorNoCanonico.datos));
+
+const telefonoAutoridad = casoCanonico.telefono;
+const telefonoNoAuth = telefonoPrueba(30);
+const telefonoInyectado = await rpc('canjear_por_telefono', {
+  p_telefono_verificado: telefonoNoAuth,
+  p_usuario_id: casoCanonico.usuario.id,
+  p_canal: CANAL,
+  p_identificador_externo: identificadorDe(telefonoAutoridad),
+  p_nombre_mostrado: 'Nombre valido',
+}, { servicio: true });
+ok('El telefono del argumento no reemplaza al telefono confirmado de Auth',
+   !telefonoInyectado.ok && telefonoInyectado.datos?.details === 'telefono_no_coincide_con_auth',
+   JSON.stringify(telefonoInyectado.datos));
+
+seccion('14. La superficie de registro obsoleta desaparece');
+
+const altaObsoleta = await rpc('registrar_organizacion', {
+  p_nombre: `Alta obsoleta ${sello}`,
+  p_telefono_admin: telefonoPrueba(40),
+  p_email_admin: `obsoleta-${sello}@flota.test`,
   p_cuit: '30712345678',
 }, { servicio: true });
-ok('El servidor registra la organizacion', alta.ok, JSON.stringify(alta.datos));
-
-const orgC = alta.datos?.organizacion_id;
-ok('Emite una invitacion de propietario',
-   alta.datos?.invitacion?.rol === 'propietario', JSON.stringify(alta.datos?.invitacion));
-
-const catalogo = await rest(`/tipos_obligacion?select=codigo&organizacion_id=eq.${orgC}`, { servicio: true });
-ok('Nace con el catalogo de Cordoba sembrado',
-   (catalogo.datos || []).length === 6, JSON.stringify((catalogo.datos || []).length));
-
-const avisosC = await rest(`/reglas_aviso?select=tipo_obligacion_id&organizacion_id=eq.${orgC}`, { servicio: true });
-ok('Y con su regla de aviso general', (avisosC.datos || []).length === 1,
-   JSON.stringify(avisosC.datos));
-
-// El administrativo abre el bot y comparte su numero.
-const nuevoAdmin = await crearUsuario(`alta-nuevo-${sello}@flota.test`);
-const TG_NUEVO = TG_ID + 5000;
-
-const canjeC = await rpc('canjear_por_telefono', {
-  p_telefono_verificado: '543514001234',   // como lo manda Telegram, sin el 9
-  p_usuario_id: nuevoAdmin.id,
-  p_telegram_user_id: TG_NUEVO, p_chat_id: TG_NUEVO,
-  p_nombre_telegram: 'Nuevo Admin',
-}, { servicio: true });
-ok('Entra compartiendo el numero', canjeC.ok, JSON.stringify(canjeC.datos));
-ok('Y queda como propietario', canjeC.datos?.rol === 'propietario', JSON.stringify(canjeC.datos));
-
-const suOrg = await rest('/organizaciones?select=id,nombre', { token: nuevoAdmin.token });
-ok('Ve su organizacion y ninguna otra',
-   (suOrg.datos || []).length === 1 && suOrg.datos[0].id === orgC,
-   JSON.stringify(suOrg.datos));
-
-const puedeInvitar = await rpc('crear_invitacion', {
-  p_organizacion_id: orgC, p_telefono: '+5493515550000',
-}, { token: nuevoAdmin.token });
-ok('Como propietario ya puede invitar (por defecto, administrador)',
-   puedeInvitar.ok && puedeInvitar.datos?.rol === 'administrador',
-   JSON.stringify(puedeInvitar.datos));
-
-// ------------------------------------------------------------------ limpieza
-
-seccion('Limpieza');
-for (const org of [orgA, orgB, orgC].filter(Boolean)) {
-  const r = await rest(`/organizaciones?id=eq.${org}`, { metodo: 'DELETE', servicio: true });
-  console.log(`  organizacion ${org.slice(0, 8)}: ${r.ok ? 'borrada' : 'quedo (' + r.estado + ')'}`);
+if (altaObsoleta.ok && altaObsoleta.datos?.organizacion_id) {
+  organizacionesCreadas.push(altaObsoleta.datos.organizacion_id);
 }
-for (const u of [duenoA, duenoB, invitado, nuevoAdmin].filter(Boolean)) {
-  await api(`/auth/v1/admin/users/${u.id}`, { metodo: 'DELETE', servicio: true });
+ok('El RPC registrar_organizacion de seis argumentos ya no existe',
+   !altaObsoleta.ok && ['PGRST202', '42883'].includes(altaObsoleta.datos?.code),
+   JSON.stringify(altaObsoleta.datos));
+} catch (error) {
+  fallas.push('La bateria termino sin errores inesperados');
+  console.error(`  \x1b[31mERROR\x1b[0m ${error.stack || error}`);
+} finally {
+  seccion('Limpieza');
+
+  const organizaciones = await Promise.allSettled(
+    [...organizacionesCreadas].reverse().map(async org => {
+      const r = await rest(`/organizaciones?id=eq.${org}`, { metodo: 'DELETE', servicio: true });
+      if (!r.ok) throw new Error(`organizacion ${org}: ${r.estado}`);
+      return org;
+    }),
+  );
+  for (const resultado of organizaciones) {
+    if (resultado.status === 'fulfilled') {
+      console.log(`  organizacion ${resultado.value.slice(0, 8)}: borrada`);
+    } else {
+      fallas.push('Limpieza de organizacion');
+      console.log(`  \x1b[31mFALLA\x1b[0m ${resultado.reason}`);
+    }
+  }
+
+  const usuarios = await Promise.allSettled(
+    [...usuariosCreados].reverse().map(async usuario => {
+      const r = await api(`/auth/v1/admin/users/${usuario.id}`, { metodo: 'DELETE', servicio: true });
+      if (!r.ok) throw new Error(`usuario ${usuario.email}: ${r.estado}`);
+      return usuario.email;
+    }),
+  );
+  for (const resultado of usuarios) {
+    if (resultado.status === 'rejected') {
+      fallas.push('Limpieza de usuario');
+      console.log(`  \x1b[31mFALLA\x1b[0m ${resultado.reason}`);
+    }
+  }
+  console.log('  usuarios de prueba procesados');
 }
-console.log('  usuarios de prueba borrados');
 
 console.log(`\n${'='.repeat(60)}`);
 if (fallas.length === 0) {
@@ -363,5 +634,5 @@ if (fallas.length === 0) {
 } else {
   console.log(`\x1b[31m${pasadas} OK, ${fallas.length} FALLAS\x1b[0m`);
   fallas.forEach(f => console.log(`  - ${f}`));
+  process.exitCode = 1;
 }
-process.exit(fallas.length === 0 ? 0 : 1);
