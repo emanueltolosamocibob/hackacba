@@ -98,6 +98,9 @@ async function montar(usuario, nombre) {
   return id;
 }
 
+// crearUsuarioTelefonoNoConfirmado ya no hace falta: crearUsuario(email, telefono,
+// false) cubre el mismo caso (telefono cargado, sin confirmar en Auth).
+
 async function estadoCandidato(organizacionId, usuarioId, invitacionId) {
   const [miembros, vinculos, invitacion] = await Promise.all([
     rest(`/miembros?select=id&organizacion_id=eq.${organizacionId}&usuario_id=eq.${usuarioId}`, { servicio: true }),
@@ -760,6 +763,144 @@ async function bateriaCompleta() {
   ok('El RPC registrar_organizacion de seis argumentos no existe',
      !altaObsoleta.ok && ['PGRST202', '42883'].includes(altaObsoleta.datos?.code),
      JSON.stringify(altaObsoleta.datos));
+
+  seccion('8. Finalizador de alta por landing (0019)');
+
+  const noAutenticado = await rpc('finalizar_alta_landing', {}, { token: ANON });
+  ok('Sin sesion de usuario no se puede finalizar el alta', !noAutenticado.ok,
+     `estado ${noAutenticado.estado} ${JSON.stringify(noAutenticado.datos)}`);
+
+  const telefonoSinConfirmar = telefonoPrueba(101);
+  const usuarioSinConfirmar = await crearUsuario(
+    `alta-landing-sinconfirmar-${sello}@flota.test`, telefonoSinConfirmar, false,
+  );
+  const sinConfirmar = await rpc('finalizar_alta_landing', {}, { token: usuarioSinConfirmar.token });
+  ok('Un telefono sin confirmar no finaliza el alta',
+     !sinConfirmar.ok && sinConfirmar.datos?.details === 'telefono_no_verificado',
+     JSON.stringify(sinConfirmar.datos));
+
+  const telefonoLanding = telefonoPrueba(100);
+  const usuarioLanding = await crearUsuario(`alta-landing-${sello}@flota.test`, telefonoLanding);
+  const primeraFinalizacion = await rpc('finalizar_alta_landing', {}, { token: usuarioLanding.token });
+  ok('Un telefono confirmado sin membresia ni invitacion se autoregistra',
+     primeraFinalizacion.ok && primeraFinalizacion.datos?.estado === 'registrado'
+       && primeraFinalizacion.datos?.organizacion?.nombre === 'Mi flota'
+       && primeraFinalizacion.datos?.flota?.nombre === 'Principal'
+       && primeraFinalizacion.datos?.vinculo?.identificador_externo === identificadorDe(telefonoLanding)
+       && primeraFinalizacion.datos?.vinculo?.jid_crudo === null,
+     JSON.stringify(primeraFinalizacion.datos));
+  if (primeraFinalizacion.ok && primeraFinalizacion.datos?.organizacion?.id) {
+    organizacionesCreadas.push(primeraFinalizacion.datos.organizacion.id);
+  }
+
+  const reintentoFinalizacion = await rpc('finalizar_alta_landing', {}, { token: usuarioLanding.token });
+  ok('El reintento devuelve estado existente con los mismos IDs que el alta',
+     reintentoFinalizacion.ok && reintentoFinalizacion.datos?.estado === 'existente'
+       && reintentoFinalizacion.datos?.organizacion?.id === primeraFinalizacion.datos?.organizacion?.id
+       && reintentoFinalizacion.datos?.flota?.id === primeraFinalizacion.datos?.flota?.id
+       && reintentoFinalizacion.datos?.vinculo?.id === primeraFinalizacion.datos?.vinculo?.id,
+     JSON.stringify(reintentoFinalizacion.datos));
+
+  const soloUnaVinculacion = await rest(
+    `/vinculos_chat?select=id&usuario_id=eq.${usuarioLanding.id}`, { servicio: true },
+  );
+  ok('El reintento no crea un segundo vinculo', soloUnaVinculacion.datos?.length === 1,
+     JSON.stringify(soloUnaVinculacion.datos));
+
+  seccion('9. Colision de identidad en el finalizador');
+
+  const telefonoColisionLanding = telefonoPrueba(102);
+  const identificadorColisionLanding = identificadorDe(telefonoColisionLanding);
+  const vinculoAjenoLanding = await rest('/vinculos_chat', {
+    servicio: true, metodo: 'POST', prefer: 'return=minimal',
+    cuerpo: {
+      usuario_id: duenoB.id,
+      canal: CANAL,
+      identificador_externo: identificadorColisionLanding,
+      jid_crudo: null,
+      telefono: telefonoColisionLanding,
+      organizacion_activa_id: orgB,
+    },
+  });
+  if (!vinculoAjenoLanding.ok) {
+    throw new Error(`vinculo de colision landing: ${JSON.stringify(vinculoAjenoLanding.datos)}`);
+  }
+
+  const usuarioColisionLanding = await crearUsuario(
+    `alta-landing-colision-${sello}@flota.test`, telefonoColisionLanding,
+  );
+  const colisionLanding = await rpc('finalizar_alta_landing', {}, { token: usuarioColisionLanding.token });
+  ok('Un telefono ya vinculado a otro usuario falla con identidad_en_uso',
+     !colisionLanding.ok && colisionLanding.datos?.details === 'identidad_en_uso',
+     JSON.stringify(colisionLanding.datos));
+
+  const sinMembresiaColisionLanding = await rest(
+    `/miembros?select=id&usuario_id=eq.${usuarioColisionLanding.id}`, { servicio: true },
+  );
+  ok('La colision del finalizador no deja membresia',
+     sinMembresiaColisionLanding.datos?.length === 0, JSON.stringify(sinMembresiaColisionLanding.datos));
+
+  seccion('10. El finalizador canjea una invitacion pendiente por telefono');
+
+  const orgLanding = await montar(duenoA, `Landing ${sello}`);
+  const telefonoInvitacionLanding = telefonoPrueba(103);
+  await rpc('crear_invitacion', {
+    p_organizacion_id: orgLanding, p_rol: 'operador', p_telefono: telefonoInvitacionLanding,
+  }, { token: duenoA.token });
+
+  const usuarioInvitacionLanding = await crearUsuario(
+    `alta-landing-invitado-${sello}@flota.test`, telefonoInvitacionLanding,
+  );
+  const invitacionFinalizada = await rpc('finalizar_alta_landing', {}, { token: usuarioInvitacionLanding.token });
+  ok('Una invitacion pendiente por telefono se canjea desde el finalizador',
+     invitacionFinalizada.ok && invitacionFinalizada.datos?.estado === 'invitacion_canjeada'
+       && invitacionFinalizada.datos?.organizacion?.id === orgLanding,
+     JSON.stringify(invitacionFinalizada.datos));
+
+  const membresiaInvitacionLanding = await rest(
+    `/miembros?select=rol&organizacion_id=eq.${orgLanding}&usuario_id=eq.${usuarioInvitacionLanding.id}`,
+    { servicio: true },
+  );
+  ok('Queda con el rol de la invitacion canjeada',
+     membresiaInvitacionLanding.datos?.[0]?.rol === 'operador',
+     JSON.stringify(membresiaInvitacionLanding.datos));
+
+  seccion('11. Reintentos concurrentes del finalizador son idempotentes');
+
+  const orgCarreraLanding = await montar(duenoA, `Landing carrera ${sello}`);
+  const telefonoCarreraLanding = telefonoPrueba(104);
+  await rpc('crear_invitacion', {
+    p_organizacion_id: orgCarreraLanding, p_rol: 'lector', p_telefono: telefonoCarreraLanding,
+  }, { token: duenoA.token });
+
+  const usuarioCarreraLanding = await crearUsuario(
+    `alta-landing-carrera-${sello}@flota.test`, telefonoCarreraLanding,
+  );
+
+  const resultadosLanding = await Promise.all(
+    Array.from({ length: 8 }, () => rpc('finalizar_alta_landing', {}, { token: usuarioCarreraLanding.token })),
+  );
+  const exitosLanding = resultadosLanding.filter(r => r.ok);
+  ok('Todas las llamadas concurrentes del finalizador terminan OK',
+     exitosLanding.length === resultadosLanding.length,
+     JSON.stringify(resultadosLanding.map(r => r.datos)));
+
+  const canjeadasLanding = exitosLanding.filter(r => r.datos?.estado === 'invitacion_canjeada');
+  ok('Exactamente una llamada concurrente canjea la invitacion', canjeadasLanding.length === 1,
+     `${canjeadasLanding.length} canjes`);
+
+  const idsOrganizacionLanding = new Set(exitosLanding.map(r => r.datos?.organizacion?.id));
+  const idsFlotaLanding = new Set(exitosLanding.map(r => r.datos?.flota?.id));
+  const idsVinculoLanding = new Set(exitosLanding.map(r => r.datos?.vinculo?.id));
+  ok('Todas las llamadas concurrentes devuelven la misma organizacion, flota y vinculo',
+     idsOrganizacionLanding.size === 1 && idsFlotaLanding.size === 1 && idsVinculoLanding.size === 1,
+     `${idsOrganizacionLanding.size} orgs, ${idsFlotaLanding.size} flotas, ${idsVinculoLanding.size} vinculos`);
+
+  const vinculosCarreraLanding = await rest(
+    `/vinculos_chat?select=id&usuario_id=eq.${usuarioCarreraLanding.id}`, { servicio: true },
+  );
+  ok('La carrera del finalizador deja un solo vinculo', vinculosCarreraLanding.datos?.length === 1,
+     JSON.stringify(vinculosCarreraLanding.datos));
 }
 
 try {
