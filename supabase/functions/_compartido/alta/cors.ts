@@ -44,7 +44,7 @@ export function evaluarCors(origen: string | null, permitidos: string[]): Result
       ...base,
       'Access-Control-Allow-Origin': normalizado,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
+      'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-supabase-api-version',
     },
   };
 }
