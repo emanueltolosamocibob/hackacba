@@ -19,6 +19,20 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --font-stamp: 'Courier Prime', 'Courier New', Courier, monospace;
 
+  /* El alta (/agregar) tiene su propia pareja tipografica: Plus Jakarta Sans
+     para el texto e IBM Plex Mono para numeros y casilleros. */
+  --font-jakarta: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-plex: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  /* Paleta del expediente del alta: verde notarial sobre papel claro. */
+  --color-brand-emerald: #047857;
+  --color-brand-light-green: #10b981;
+  --color-brand-dark-green: #064e3b;
+  --color-brand-deep-forest: #0b2918;
+  --color-brand-wa: #25d366;
+  --color-brand-surface: #f6f9f6;
+  --color-brand-card: #ffffff;
+
   /* Paleta del papel de seguridad. */
   --color-dgr-bg: #f1f8f3;
   --color-dgr-paper: #f9fdfa;
@@ -54,73 +68,74 @@
   --color-wa-vencido: #ff8077;
 }
 
-/* Lo minimo de preflight que el home necesita, acotado. Todo bajo `:where`
-   para que tenga especificidad cero y cualquier utilidad le gane. */
-:where(.landing),
-:where(.landing) *,
-:where(.landing) *::before,
-:where(.landing) *::after {
+/* Lo minimo de preflight que el home y el alta necesitan, acotado a las dos
+   raices del mundo claro (`.landing` y `.alta`). Todo bajo `:where` para que
+   tenga especificidad cero y cualquier utilidad le gane. */
+:where(.landing, .alta),
+:where(.landing, .alta) *,
+:where(.landing, .alta) *::before,
+:where(.landing, .alta) *::after {
   box-sizing: border-box;
   border-width: 0;
   border-style: solid;
   border-color: currentColor;
 }
 
-:where(.landing) svg {
+:where(.landing, .alta) svg {
   display: block;
   vertical-align: middle;
 }
 
-:where(.landing) :where(button, input) {
+:where(.landing, .alta) :where(button, input) {
   font: inherit;
   color: inherit;
   letter-spacing: inherit;
   margin: 0;
 }
 
-:where(.landing) button {
+:where(.landing, .alta) button {
   cursor: pointer;
   background: none;
   appearance: none;
 }
 
-:where(.landing) input {
+:where(.landing, .alta) input {
   appearance: none;
   outline: none;
 }
 
-:where(.landing) a {
+:where(.landing, .alta) a {
   text-decoration: none;
   transition: none;
 }
 
-:where(.landing) :where(h1, h2, h3) {
+:where(.landing, .alta) :where(h1, h2, h3) {
   letter-spacing: -0.02em;
 }
 
 /* Superficies del navegador, tematizadas al papel verde. */
-.landing :where(a, button, input, [tabindex]):focus-visible {
+:where(.landing, .alta) :where(a, button, input, [tabindex]):focus-visible {
   outline: 2px solid var(--color-dgr-forest);
   outline-offset: 3px;
   border-radius: 2px;
 }
 
-html:has(.landing) {
+html:has(.landing, .alta) {
   color-scheme: light;
   scroll-behavior: smooth;
   scrollbar-color: rgba(19, 78, 44, 0.35) #edf6f0;
 }
 
-html:has(.landing)::-webkit-scrollbar-track {
+html:has(.landing, .alta)::-webkit-scrollbar-track {
   background: #edf6f0;
 }
 
-html:has(.landing)::-webkit-scrollbar-thumb {
+html:has(.landing, .alta)::-webkit-scrollbar-thumb {
   background: rgba(19, 78, 44, 0.3);
   border-color: #edf6f0;
 }
 
-html:has(.landing)::-webkit-scrollbar-thumb:hover {
+html:has(.landing, .alta)::-webkit-scrollbar-thumb:hover {
   background: rgba(19, 78, 44, 0.5);
 }
 

@@ -1,0 +1,96 @@
+/* =============================================================================
+   /agregar: el expediente del alta. Papel notarial claro con trama de
+   seguridad, un unico documento con dos secciones (telefono y codigo) y seis
+   casilleros como los de una cedula.
+
+   Los tokens (`brand-*`, `font-jakarta`, `font-plex`) y el reset acotado viven
+   en `landing/landing.css`, que es donde entra Tailwind. Aca van solo las
+   texturas que no se expresan con utilidades.
+   ============================================================================= */
+
+/* Fondo guilloche / textura de papel notarial seguro. */
+.official-bg-guilloche {
+  background-color: #f3f7f4;
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(5, 150, 105, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
+    linear-gradient(rgba(4, 120, 87, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(4, 120, 87, 0.035) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    24px 24px,
+    24px 24px;
+}
+
+/* Patron de fondo interior, estilo formulario de seguridad valorado. */
+.form-guilloche-panel {
+  background-color: rgba(255, 255, 255, 0.96);
+  background-image:
+    radial-gradient(#059669 0.75px, transparent 0.75px),
+    radial-gradient(#059669 0.75px, #ffffff 0.75px);
+  background-size: 30px 30px;
+  background-position:
+    0 0,
+    15px 15px;
+}
+
+/* Borde foliado perimetral microimpreso. */
+.border-security-guilloche {
+  border: 2px solid #047857;
+  box-shadow:
+    0 0 0 3px #d1fae5,
+    0 15px 35px -5px rgba(6, 78, 59, 0.12),
+    0 4px 6px -2px rgba(6, 78, 59, 0.05);
+}
+
+/* El expediente: borde de tinta oscura, canto apenas redondeado. */
+.expediente {
+  border: 2.5px solid #0b2918;
+  border-radius: 4px;
+  box-shadow: 0 10px 25px -5px rgba(11, 41, 24, 0.08);
+}
+
+.expediente-seccion {
+  border: 1.5px solid #0b2918;
+  border-radius: 4px;
+}
+
+.expediente-casilleros {
+  border: 1.5px dashed #0b2918;
+  border-radius: 4px;
+  background-color: #f8faf8;
+}
+
+.expediente-divisor {
+  border-top: 1.5px dashed #cbd5e1;
+}
+
+/* Casillero del codigo: al foco se hunde en verde y sube un pixel. */
+.otp-official-box:focus {
+  outline: none;
+  border-color: #047857;
+  background-color: #ecfdf5;
+  box-shadow:
+    0 0 0 2px rgba(4, 120, 87, 0.35),
+    inset 0 2px 4px rgba(6, 78, 59, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Sin flechas en los casilleros numericos. */
+.otp-official-box::-webkit-outer-spin-button,
+.otp-official-box::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* El spinner de los botones en curso. */
+@keyframes alta-giro {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.alta-giro {
+  animation: alta-giro 0.9s linear infinite;
+}
