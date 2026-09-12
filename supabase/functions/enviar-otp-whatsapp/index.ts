@@ -18,7 +18,17 @@ import { manejarHookSms } from '../_compartido/alta/hook-sms.ts';
 import { rpcServicio } from '../_compartido/alta/supabase.ts';
 import { crearProveedorOtpWaha } from '../_compartido/alta/mensajeria/waha.ts';
 
-const PRESUPUESTO_MS = 8000;
+// Auth corta el hook a los 5 s. El envio corre en segundo plano con
+// EdgeRuntime.waitUntil, asi que este presupuesto cubre solo el envio.
+const PRESUPUESTO_MS = 20000;
+
+declare const EdgeRuntime: { waitUntil(tarea: Promise<unknown>): void } | undefined;
+
+function diferir(tarea: Promise<void>): void {
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
+    EdgeRuntime.waitUntil(tarea);
+  }
+}
 
 function requerido(nombre: string): string {
   const valor = Deno.env.get(nombre);
@@ -69,16 +79,17 @@ async function manejar(peticion: Request): Promise<Response> {
           p_error_codigo: codigoError ?? null,
         });
       },
+      enSegundoPlano: diferir,
     });
 
     return json(resultado.cuerpo, resultado.status, resultado.encabezados ?? {});
   } catch (error) {
     // Nunca se loguea `cuerpoCrudo` ni el payload parseado: podrian llevar el OTP.
     console.error('enviar-otp-whatsapp: fallo inesperado', error instanceof Error ? error.message : String(error));
-    return json({ error: 'error_interno' }, 500);
-  } finally {
     clearTimeout(limite);
+    return json({ error: 'error_interno' }, 500);
   }
+  // El temporizador no se limpia al responder: sigue vigilando el envio diferido.
 }
 
 if (import.meta.main) {

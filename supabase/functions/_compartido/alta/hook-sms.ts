@@ -27,7 +27,11 @@ const EsquemaPayload = z.object({
     })
     .passthrough(),
   sms: z.object({
-    otp: z.string().min(1),
+    // Defensa en profundidad: nunca deberia llegar otra cosa que digitos,
+    // pero si algo mas se cuela (inyeccion, un proveedor que cambio el
+    // formato) se rechaza aca con el mismo 400 generico, antes de pasarlo a
+    // WAHA como texto.
+    otp: z.string().regex(/^\d{4,10}$/, 'El OTP debe ser solo digitos, de 4 a 10'),
   }),
 });
 
@@ -149,6 +153,12 @@ export interface DependenciasHookSms {
     idProveedor?: string,
     codigoError?: string,
   ): Promise<void>;
+  /**
+   * Si esta presente, el envio y el cierre corren despues de responder. Auth
+   * corta el hook a los 5 segundos y un envio por WAHA puede tardar mas: con
+   * la reserva hecha se responde 200 y el trabajo sigue en segundo plano.
+   */
+  enSegundoPlano?(tarea: Promise<void>): void;
 }
 
 export interface ResultadoHookSms {
@@ -197,18 +207,35 @@ export async function manejarHookSms(
     };
   }
 
-  const envio = await deps.proveedor.enviar({
-    telefonoE164: telefono.e164,
-    codigo: payload.sms.otp,
-    idempotencia: idEntrega,
-    senal: deps.senal,
-  });
+  const enviarYCerrar = async (): Promise<'enviado' | 'fallido'> => {
+    const envio = await deps.proveedor.enviar({
+      telefonoE164: telefono.e164,
+      codigo: payload.sms.otp,
+      idempotencia: idEntrega,
+      senal: deps.senal,
+    });
 
-  if (envio.estado === 'enviado') {
-    await deps.cerrar(idEntrega, 'enviada', envio.idExterno);
+    if (envio.estado === 'enviado') {
+      await deps.cerrar(idEntrega, 'enviada', envio.idExterno);
+      return 'enviado';
+    }
+
+    await deps.cerrar(idEntrega, 'fallida', undefined, envio.estado);
+    return 'fallido';
+  };
+
+  if (deps.enSegundoPlano) {
+    deps.enSegundoPlano(
+      enviarYCerrar().then(
+        () => undefined,
+        (error) => console.error('enviar-otp-whatsapp: fallo en segundo plano', error instanceof Error ? error.message : String(error)),
+      ),
+    );
     return { status: 200, cuerpo: {} };
   }
 
-  await deps.cerrar(idEntrega, 'fallida', undefined, envio.estado);
+  if ((await enviarYCerrar()) === 'enviado') {
+    return { status: 200, cuerpo: {} };
+  }
   return { status: 503, cuerpo: { error: 'proveedor_no_disponible' } };
 }

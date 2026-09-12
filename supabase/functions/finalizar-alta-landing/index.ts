@@ -38,6 +38,11 @@ async function manejar(peticion: Request): Promise<Response> {
     },
   );
 
+  // Un 204 (preflight CORS) no admite cuerpo: Response lanza si se le pasa uno.
+  if (resultado.status === 204) {
+    return new Response(null, { status: 204, headers: resultado.encabezadosCors });
+  }
+
   return new Response(JSON.stringify(resultado.cuerpo), {
     status: resultado.status,
     headers: { 'Content-Type': 'application/json', ...resultado.encabezadosCors },
