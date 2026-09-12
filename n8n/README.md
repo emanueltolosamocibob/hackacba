@@ -52,7 +52,33 @@ El despliegue requiere una URL HTTPS alcanzable desde n8n Cloud. No hay un host
 creado por este cambio. `/health` comprueba el proceso, no la disponibilidad de ITV.
 Usar una réplica: las sesiones están en memoria, expiran en dos minutos y se
 cierran tras enviar el formulario. Límite inicial: cuatro sesiones simultáneas,
-una por contexto de chat/usuario. Un reinicio descarta las consultas pendientes.
+una por contexto de chat/usuario. `ITV_MAX_SESIONES` permite ajustar el límite
+(1 a 20). Un reinicio descarta las consultas pendientes.
+
+### Despliegue de prueba en Render
+
+El `render.yaml` de la raíz prepara un servicio Docker Free desde la rama
+`codex/n8n-telegram-itv`, con una instancia y una consulta simultánea.
+Crear un Blueprint en Render, conectar únicamente este repositorio privado y
+seleccionar esa rama. Revisar que el plan sea Free antes de crear el servicio.
+La plantilla no incluye bases de datos, discos ni despliegues automáticos.
+
+Render genera `ITV_API_KEY` como secreto aleatorio. Tras desplegar, copiar su
+valor a una credencial Header Auth de n8n, sin guardarlo en el workflow exportado.
+Usar el subdominio HTTPS asignado por Render para ambas herramientas; no hace
+falta delegar `dcrzstudio.com.ar`. Comprobar primero `GET /health`.
+
+El plan gratuito se suspende tras 15 minutos sin tráfico y puede tardar alrededor
+de un minuto en arrancar. Las herramientas esperan hasta 120 segundos; configurar
+el timeout total del workflow en 300 segundos también si se importan los nodos
+por portapapeles. El pegado no importa los ajustes globales del workflow.
+Una suspensión o reinicio invalida las sesiones pendientes. Esta configuración
+sirve para una prueba con poco tráfico; aún hay que comprobar el consumo de
+memoria de Chromium en la instancia. No se validó la imagen Docker localmente
+porque el daemon Docker no está iniciado.
+
+Referencias: [Blueprints](https://render.com/docs/blueprint-spec) y
+[límites del plan gratuito](https://render.com/docs/free).
 
 ## 2. Importar en n8n
 

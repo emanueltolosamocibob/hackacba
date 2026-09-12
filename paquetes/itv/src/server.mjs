@@ -55,9 +55,13 @@ export function crearServidor(consultas, clave) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const clave = process.env.ITV_API_KEY;
   if (!clave || clave.length < 32) throw new Error('Configurá ITV_API_KEY con al menos 32 caracteres.');
+  const maxSesiones = Number(process.env.ITV_MAX_SESIONES ?? 4);
+  if (!Number.isInteger(maxSesiones) || maxSesiones < 1 || maxSesiones > 20) {
+    throw new Error('ITV_MAX_SESIONES debe ser un entero entre 1 y 20.');
+  }
   const { crearNavegador } = await import('./navegador.mjs');
   const navegador = await crearNavegador();
-  const consultas = new ConsultasITV(dominio => navegador.abrir(dominio));
+  const consultas = new ConsultasITV(dominio => navegador.abrir(dominio), { maxSesiones });
   const servidor = crearServidor(consultas, clave);
   servidor.requestTimeout = 35_000;
   const limpieza = setInterval(() => consultas.limpiar().catch(() => {}), 15_000);

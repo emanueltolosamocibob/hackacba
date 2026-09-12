@@ -21,7 +21,7 @@ return [{json: {
 const httpBase = {
   method: 'POST', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
   sendBody: true, specifyBody: 'json',
-  options: { timeout: 35000, response: { response: { neverError: true, responseFormat: 'json' } } },
+  options: { timeout: 120000, response: { response: { neverError: true, responseFormat: 'json' } } },
 };
 
 const workflow = {
@@ -74,7 +74,7 @@ const workflow = {
     iniciar_consulta_itv: { ai_tool: [[edge('Consultar ITV', 'ai_tool')]] },
     completar_consulta_itv: { ai_tool: [[edge('Consultar ITV', 'ai_tool')]] },
   },
-  settings: { executionOrder: 'v1', timezone: 'America/Argentina/Cordoba', executionTimeout: 180 },
+  settings: { executionOrder: 'v1', timezone: 'America/Argentina/Cordoba', executionTimeout: 300 },
   pinData: {}, tags: [],
 };
 

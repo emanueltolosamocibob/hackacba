@@ -1,0 +1,21 @@
+# Una instancia de prueba: las sesiones del navegador viven en memoria.
+services:
+  - type: web
+    name: hackacba-itv
+    runtime: docker
+    plan: free
+    branch: codex/n8n-telegram-itv
+    dockerfilePath: ./paquetes/itv/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    numInstances: 1
+    autoDeployTrigger: "off"
+    envVars:
+      - key: ITV_API_KEY
+        generateValue: true
+      - key: ITV_MAX_SESIONES
+        value: "1"
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "10000"
