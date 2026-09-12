@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { FUENTE } from './consultas.mjs';
+import { FUENTE, ErrorConsulta } from './consultas.mjs';
 
 export async function crearNavegador() {
   const navegador = await chromium.launch({ headless: true });
@@ -22,11 +22,18 @@ export async function crearNavegador() {
           texto: () => pagina.locator('body').innerText(),
           async enviar(respuesta) {
             await pagina.locator('#MainContent_tbCaptcha').fill(String(respuesta));
-            // Histórico.aspx realiza un postback. No leer la tabla de una carga anterior.
+            // El UpdatePanel de ASP.NET puede completar el postback sin navegar.
+            // Registrar la espera antes del clic y esperar luego la tabla renderizada.
             await Promise.all([
-              pagina.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 25_000 }),
+              pagina.waitForResponse(res => res.url() === FUENTE &&
+                res.request().method() === 'POST', { timeout: 25_000 }),
               pagina.locator('#MainContent_SearchButton').click(),
             ]);
+            try {
+              await pagina.locator('#MainContent_GridResultados').waitFor({ state: 'visible', timeout: 10_000 });
+            } catch {
+              throw new ErrorConsulta('resultado_no_verificado', 'ITV no mostró una tabla de resultados verificable.', 502);
+            }
           },
           filas: () => pagina.locator('#MainContent_GridResultados tr').evaluateAll(filas =>
             filas.map(fila => [...fila.querySelectorAll('th, td')].map(celda => celda.innerText.trim()))),
