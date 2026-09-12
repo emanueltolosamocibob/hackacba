@@ -13,9 +13,17 @@ import path from 'node:path';
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIRECTORIO_MIGRACIONES = path.join(RAIZ, 'supabase', 'migrations');
 const ARCHIVO_0016 = '0016_vinculos_chat_neutral.sql';
+const ARCHIVO_0017 = '0017_remediar_vinculos_chat.sql';
+const ARCHIVO_0018 = '0018_remediar_formato_telefono_auth.sql';
 const HASH_0016 = 'a72d871113841cf44a8bad15eeea719a442a3946b07d1d96d485a193e8796c0f';
+const HASH_0017 = '589fd8bb6c54e7e12577c82c9da5a1bc23fdc0031b0f47877e37d6a78e37f61b';
+const HASH_0018 = 'c9c55f3a54d08317b1c903e32c9206e78fedb3cd597c652fc672ba76f0cb1e78';
 const BYTES_0016 = 16_568;
+const BYTES_0017 = 17_110;
+const BYTES_0018 = 15_108;
 const LINEAS_0016 = 487;
+const LINEAS_0017 = 485;
+const LINEAS_0018 = 428;
 
 let pasadas = 0;
 const fallas = [];
@@ -64,17 +72,31 @@ function dropsSinBloqueoExclusivo(sql) {
   return problemas;
 }
 
+async function verificarArchivoAplicado({ archivo, hash, bytes, lineas }) {
+  const contenido = await readFile(path.join(DIRECTORIO_MIGRACIONES, archivo));
+  const texto = contenido.toString('utf8');
+  const hashReal = createHash('sha256').update(contenido).digest('hex');
+  const lineasReales = texto.split('\n').length - (texto.endsWith('\n') ? 1 : 0);
+
+  ok(`${archivo.slice(0, 4)} conserva su SHA-256 aplicado`, hashReal === hash, hashReal);
+  ok(`${archivo.slice(0, 4)} conserva su cantidad exacta de bytes`, contenido.byteLength === bytes,
+     `${contenido.byteLength}`);
+  ok(`${archivo.slice(0, 4)} conserva sus ${lineas} lineas`, lineasReales === lineas, `${lineasReales}`);
+  return texto;
+}
+
 console.log('\x1b[1mVerificacion de la historia de migraciones\x1b[0m');
 
-const contenido0016 = await readFile(path.join(DIRECTORIO_MIGRACIONES, ARCHIVO_0016));
-const texto0016 = contenido0016.toString('utf8');
-const hash0016 = createHash('sha256').update(contenido0016).digest('hex');
-const lineas0016 = texto0016.split('\n').length - (texto0016.endsWith('\n') ? 1 : 0);
+const texto0016 = await verificarArchivoAplicado({
+  archivo: ARCHIVO_0016, hash: HASH_0016, bytes: BYTES_0016, lineas: LINEAS_0016,
+});
+await verificarArchivoAplicado({
+  archivo: ARCHIVO_0017, hash: HASH_0017, bytes: BYTES_0017, lineas: LINEAS_0017,
+});
+await verificarArchivoAplicado({
+  archivo: ARCHIVO_0018, hash: HASH_0018, bytes: BYTES_0018, lineas: LINEAS_0018,
+});
 
-ok('0016 conserva su SHA-256 aplicado', hash0016 === HASH_0016, hash0016);
-ok('0016 conserva su cantidad exacta de bytes', contenido0016.byteLength === BYTES_0016,
-   `${contenido0016.byteLength}`);
-ok('0016 conserva sus 487 lineas', lineas0016 === LINEAS_0016, `${lineas0016}`);
 ok('El incidente de 0016 sigue visible y no se disfraza reescribiendo historia',
    dropsSinBloqueoExclusivo(texto0016).includes('public.vinculos_telegram'));
 

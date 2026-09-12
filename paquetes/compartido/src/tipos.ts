@@ -919,6 +919,10 @@ export type Database = {
         }
         Returns: Json
       }
+      canonicalizar_telefono_argentino: {
+        Args: { p_permitir_formato_local?: boolean; p_telefono: string }
+        Returns: string
+      }
       clave_telefono: { Args: { p_telefono: string }; Returns: string }
       contexto_chat: {
         Args: {
@@ -997,17 +1001,6 @@ export type Database = {
         Args: { p_flota_id: string }
         Returns: undefined
       }
-      registrar_organizacion: {
-        Args: {
-          p_cuit?: string
-          p_email_admin?: string
-          p_nombre: string
-          p_nombre_flota?: string
-          p_telefono_admin: string
-          p_zona_horaria?: string
-        }
-        Returns: Json
-      }
       reporte_gastos: {
         Args: {
           p_agrupar_por?: string
@@ -1034,6 +1027,21 @@ export type Database = {
           p_roles: Database["public"]["Enums"]["rol_miembro"][]
         }
         Returns: boolean
+      }
+      validar_identidad_chat: {
+        Args: {
+          p_canal: Database["public"]["Enums"]["canal_chat"]
+          p_identificador_externo: string
+          p_nombre_mostrado?: string
+          p_telefono_afirmado?: string
+          p_usuario_id: string
+        }
+        Returns: {
+          identificador_canonico: string
+          nombre_validado: string
+          telefono_clave: string
+          telefono_e164: string
+        }[]
       }
     }
     Enums: {
