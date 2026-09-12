@@ -146,6 +146,12 @@ dos, con tipos generados del esquema real y esquemas zod de validación.
 cómo un chat de Telegram obtiene un JWT, las firmas exactas de la API, el
 despacho de la cola de avisos y lo que todavía falta en la base.
 
+**Integración n8n + ITV: [n8n/README.md](n8n/README.md)** — workflow importable,
+instrucción de sistema y servicio de navegador en `paquetes/itv`. El LLM lee la
+operación del formulario y responde usando la misma sesión. Es una consulta
+externa separada del backend de flotas; no escribe en Supabase. Requiere conectar
+credenciales y desplegar el servicio de navegador antes de activar el workflow.
+
 **No hay Edge Functions todavía, y es a propósito**: hasta acá toda la lógica se
 expresa en Postgres, y `pg_cron` llama a `tarea_diaria()` sin intermediarios.
 La primera Edge Function va a ser el webhook de Telegram.

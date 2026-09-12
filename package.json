@@ -7,6 +7,9 @@
     "paquetes/*"
   ],
   "scripts": {
+    "itv:start": "npm run start --workspace=@flota/itv",
+    "itv:test": "npm test --workspace=@flota/itv",
+    "n8n:generar": "node n8n/generar.mjs",
     "db:push": "supabase db push",
     "db:estado": "supabase migration list",
     "db:tipos": "supabase gen types typescript --linked > paquetes/compartido/src/tipos.ts",
