@@ -316,3 +316,28 @@ Deno.test('el finalizador traduce un JWT rechazado por PostgREST a sesion_invali
   assertEquals(resultado.status, 401);
   assertEquals(resultado.cuerpo.error, 'sesion_invalida');
 });
+
+Deno.test('el preflight OPTIONS de un origen permitido responde 204 con cabeceras CORS', async () => {
+  const resultado = await manejarFinalizarAltaLanding('OPTIONS', ORIGENES[0], null, {
+    origenesPermitidos: ORIGENES,
+    llamarFinalizador() {
+      return Promise.reject(new Error('no debe llamarse en el preflight'));
+    },
+  });
+
+  assertEquals(resultado.status, 204);
+  assertEquals(resultado.encabezadosCors['Access-Control-Allow-Origin'], ORIGENES[0]);
+  assertEquals(resultado.encabezadosCors['Vary'], 'Origin');
+});
+
+Deno.test('el preflight OPTIONS de un origen ajeno responde 403 sin reflejar el origen', async () => {
+  const resultado = await manejarFinalizarAltaLanding('OPTIONS', 'https://evil.example', null, {
+    origenesPermitidos: ORIGENES,
+    llamarFinalizador() {
+      return Promise.reject(new Error('no debe llamarse en el preflight'));
+    },
+  });
+
+  assertEquals(resultado.status, 403);
+  assertEquals(resultado.encabezadosCors['Access-Control-Allow-Origin'], undefined);
+});
