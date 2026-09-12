@@ -70,9 +70,12 @@ falta delegar `dcrzstudio.com.ar`. Comprobar primero `GET /health`.
 
 El plan gratuito se suspende tras 15 minutos sin tráfico y puede tardar alrededor
 de un minuto en arrancar. Las herramientas esperan hasta 120 segundos; configurar
-el timeout total del workflow en 300 segundos también si se importan los nodos
+el timeout total del workflow en 180 segundos (máximo observado en esta cuenta
+de n8n Cloud) también si se importan los nodos
 por portapapeles. El pegado no importa los ajustes globales del workflow.
-Una suspensión o reinicio invalida las sesiones pendientes. Esta configuración
+Si el arranque y las llamadas del modelo exceden ese máximo, la ejecución puede
+interrumpirse: hay que medirlo en la prueba real. Una suspensión o reinicio
+invalida las sesiones pendientes. Esta configuración
 sirve para una prueba con poco tráfico; aún hay que comprobar el consumo de
 memoria de Chromium en la instancia. No se validó la imagen Docker localmente
 porque el daemon Docker no está iniciado.

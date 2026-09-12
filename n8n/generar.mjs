@@ -74,7 +74,7 @@ const workflow = {
     iniciar_consulta_itv: { ai_tool: [[edge('Consultar ITV', 'ai_tool')]] },
     completar_consulta_itv: { ai_tool: [[edge('Consultar ITV', 'ai_tool')]] },
   },
-  settings: { executionOrder: 'v1', timezone: 'America/Argentina/Cordoba', executionTimeout: 300 },
+  settings: { executionOrder: 'v1', timezone: 'America/Argentina/Cordoba', executionTimeout: 180 },
   pinData: {}, tags: [],
 };
 
