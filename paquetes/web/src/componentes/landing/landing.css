@@ -1,0 +1,212 @@
+/* =============================================================================
+   Home: el Formulario 08 digital. Papel verde de seguridad, bordes dobles de
+   imprenta, sellos rojos y numeracion mecanica.
+
+   Tailwind v4 entra sin preflight a proposito: el reset global cambiaria el
+   alta y la pagina de error, que no usan utilidades. Las utilidades se
+   importan sin capa (`layer`) para que ganen por especificidad a los
+   selectores de elemento de `estilos.css` en vez de perder por estar en una
+   @layer. Lo que preflight aportaba y el home necesita (bordes solidos,
+   svg en bloque, controles heredando la fuente) se reconstruye abajo,
+   acotado a `.landing`.
+   ============================================================================= */
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css';
+
+@theme {
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --font-stamp: 'Courier Prime', 'Courier New', Courier, monospace;
+
+  /* Paleta del papel de seguridad. */
+  --color-dgr-bg: #f1f8f3;
+  --color-dgr-paper: #f9fdfa;
+  --color-dgr-card: #ffffff;
+  --color-dgr-green-dark: #0b351e;
+  --color-dgr-forest: #134e2c;
+  --color-dgr-border: #1b4d36;
+  --color-dgr-mint: #2ea466;
+  --color-dgr-tint: #e3f3e8;
+  --color-dgr-stamp-red: #ba1a1a;
+  --color-dgr-ink-black: #0d1813;
+  --color-dgr-cyan-stamp: #0284c7;
+
+  /* Colores del cliente de WhatsApp en modo oscuro, tal como se ven en el
+     telefono. Son de la maqueta del chat y de nada mas. */
+  --color-wa-fondo: #0b141a;
+  --color-wa-barra: #1f2c34;
+  --color-wa-panel: #202c33;
+  --color-wa-hondo: #111b21;
+  --color-wa-borde: #2a3942;
+  --color-wa-borde-suave: #222d34;
+  --color-wa-fecha: #182229;
+  --color-wa-saliente: #005c4b;
+  --color-wa-verde: #00a884;
+  --color-wa-verde-hover: #008f6f;
+  --color-wa-texto: #e9edef;
+  --color-wa-texto-2: #d1d7db;
+  --color-wa-gris: #8696a0;
+  --color-wa-gris-claro: #aebac1;
+  --color-wa-celeste: #53bdeb;
+  --color-wa-ok: #25d366;
+  --color-wa-alerta: #ffd279;
+  --color-wa-vencido: #ff8077;
+}
+
+/* Lo minimo de preflight que el home necesita, acotado. Todo bajo `:where`
+   para que tenga especificidad cero y cualquier utilidad le gane. */
+:where(.landing),
+:where(.landing) *,
+:where(.landing) *::before,
+:where(.landing) *::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: currentColor;
+}
+
+:where(.landing) svg {
+  display: block;
+  vertical-align: middle;
+}
+
+:where(.landing) :where(button, input) {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+}
+
+:where(.landing) button {
+  cursor: pointer;
+  background: none;
+  appearance: none;
+}
+
+:where(.landing) input {
+  appearance: none;
+  outline: none;
+}
+
+:where(.landing) a {
+  text-decoration: none;
+  transition: none;
+}
+
+:where(.landing) :where(h1, h2, h3) {
+  letter-spacing: -0.02em;
+}
+
+/* Superficies del navegador, tematizadas al papel verde. */
+.landing :where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-dgr-forest);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+html:has(.landing) {
+  color-scheme: light;
+  scroll-behavior: smooth;
+  scrollbar-color: rgba(19, 78, 44, 0.35) #edf6f0;
+}
+
+html:has(.landing)::-webkit-scrollbar-track {
+  background: #edf6f0;
+}
+
+html:has(.landing)::-webkit-scrollbar-thumb {
+  background: rgba(19, 78, 44, 0.3);
+  border-color: #edf6f0;
+}
+
+html:has(.landing)::-webkit-scrollbar-thumb:hover {
+  background: rgba(19, 78, 44, 0.5);
+}
+
+/* ------------------------------------------------- trama del papel moneda */
+
+/* Microguilloche y filigrana registral. */
+.bg-guilloche-official {
+  background-color: #edf6f0;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(19, 78, 44, 0.07) 0%, transparent 80%),
+    repeating-linear-gradient(
+      45deg,
+      rgba(30, 94, 58, 0.045) 0px,
+      rgba(30, 94, 58, 0.045) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(30, 94, 58, 0.045) 0px,
+      rgba(30, 94, 58, 0.045) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  background-size:
+    100% 100%,
+    16px 16px,
+    16px 16px;
+}
+
+/* Filigrana microimpresa continua, tipo fondo de cheque. */
+.microprint-bg {
+  background-image: radial-gradient(rgba(19, 78, 44, 0.06) 1px, transparent 0);
+  background-size: 12px 12px;
+}
+
+/* Fondo punteado del chat, como el papel tapiz de WhatsApp. */
+.wa-tapiz {
+  background-color: #0b141a;
+  background-image: radial-gradient(#1f2c34 0.75px, transparent 0.75px);
+  background-size: 16px 16px;
+}
+
+/* Bordes dobles milimetricos del Formulario 08. */
+.border-double-dgr {
+  border: 3px double #134e2c;
+}
+
+/* Tinta de sello rojo carmesi de transferencia / verificacion. */
+.stamp-oval-red {
+  border: 3px solid #ba1a1a;
+  border-radius: 9999px;
+  color: #ba1a1a;
+  transform: rotate(-3.5deg);
+  box-shadow:
+    0 0 0 1px rgba(186, 26, 26, 0.25) inset,
+    0 2px 8px rgba(186, 26, 26, 0.15);
+  mix-blend-mode: multiply;
+}
+
+/* Numerador mecanico de imprenta fiscal. */
+.mechanical-number {
+  font-family: var(--font-stamp);
+  color: #ba1a1a;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-shadow: 0.5px 0.5px 0 rgba(186, 26, 26, 0.4);
+}
+
+.mechanical-cyan {
+  font-family: var(--font-stamp);
+  color: #0284c7;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+/* Marca de agua al sesgo. */
+.watermark-slant {
+  transform: rotate(-28deg);
+  user-select: none;
+  pointer-events: none;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

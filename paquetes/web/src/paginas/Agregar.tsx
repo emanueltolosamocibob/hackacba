@@ -1,17 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CampoTelefono } from '../componentes/CampoTelefono';
+import { agruparTelefono } from '../utilidades/telefono';
 import estilos from './Agregar.module.css';
 
 interface EstadoDeRuta {
   telefono?: string;
-}
-
-/** Agrupa para mostrar, igual que el campo. La verdad la normaliza la base. */
-function mostrar(digitos: string): string {
-  if (digitos.length <= 3) return digitos;
-  if (digitos.length <= 7) return `${digitos.slice(0, 3)} ${digitos.slice(3)}`;
-  return `${digitos.slice(0, 3)} ${digitos.slice(3, 7)} ${digitos.slice(7)}`;
 }
 
 export function Agregar() {
@@ -48,7 +42,7 @@ export function Agregar() {
               <div className={estilos.pasoContenido}>
                 {hayNumero ? (
                   <div className={estilos.recibido}>
-                    <span className={estilos.recibidoNumero}>+54 {mostrar(telefono)}</span>
+                    <span className={estilos.recibidoNumero}>+54 {agruparTelefono(telefono)}</span>
                     <button
                       className={estilos.cambiar}
                       type="button"

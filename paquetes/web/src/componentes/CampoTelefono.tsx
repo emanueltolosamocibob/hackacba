@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
+import { agruparTelefono, soloDigitos } from '../utilidades/telefono';
 import estilos from './CampoTelefono.module.css';
 
 export type EstadoCampo = 'listo' | 'enviando' | 'error';
@@ -18,21 +19,6 @@ interface Props {
   onEnviar: (telefono: string) => void;
 }
 
-/**
- * Agrupa los digitos para que se puedan leer, y nada mas.
- *
- * La normalizacion de verdad vive en `clave_telefono()` en la base (migracion
- * 0015), que sabe que el 15 de celular va en el medio, despues del codigo de
- * area. Reimplementar esa regla aca seria tener dos verdades: el cliente
- * agrupa para la vista, el servidor decide.
- */
-function agrupar(digitos: string): string {
-  const d = digitos.slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 7) return `${d.slice(0, 3)} ${d.slice(3)}`;
-  return `${d.slice(0, 3)} ${d.slice(3, 7)} ${d.slice(7)}`;
-}
-
 export function CampoTelefono({
   etiqueta,
   nota,
@@ -50,7 +36,7 @@ export function CampoTelefono({
   const idNota = useId();
   const idError = useId();
 
-  const digitos = valor.replace(/\D/g, '');
+  const digitos = soloDigitos(valor);
   const suficiente = digitos.length >= 10;
   const enviando = estado === 'enviando';
   const hayError = estado === 'error' && Boolean(error);
@@ -93,7 +79,7 @@ export function CampoTelefono({
           aria-label="Tu número de WhatsApp, sin el cero y sin el quince"
           aria-describedby={descrito || undefined}
           aria-invalid={hayError || undefined}
-          value={agrupar(digitos)}
+          value={agruparTelefono(digitos)}
           disabled={enviando}
           autoFocus={autoFocus}
           onChange={(e) => setValor(e.target.value)}
