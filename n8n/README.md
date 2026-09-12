@@ -57,6 +57,21 @@ una por contexto de chat/usuario. `ITV_MAX_SESIONES` permite ajustar el límite
 
 ### Despliegue de prueba en Render
 
+El servicio de esta sesión se desplegó desde una copia independiente del módulo
+en el repositorio privado `BeEasy000/telegram-itv-service`, porque la cuenta
+colaboradora no puede instalar la integración Render sobre `hackacba`.
+URL: https://telegram-itv-service.onrender.com. Se verificó `/health` (200) y
+rechazo sin clave (401). El workflow de n8n ya tiene las dos URLs; la credencial
+está pendiente de autorización y aún falta probar una consulta completa.
+
+`hackacba` sigue siendo el proyecto principal. Esta copia incluye solamente
+el módulo ITV; los cambios deben sincronizarse explícitamente. No copia datos ni
+conecta Supabase. El acceso a flotas/pagos desde el bot requiere el vínculo de
+usuarios y autenticación descritos arriba y en `BOT.md`.
+
+La plantilla que sigue permite desplegar directamente desde `hackacba` si en el
+futuro su propietario habilita la integración:
+
 El `render.yaml` de la raíz prepara un servicio Docker Free desde la rama
 `codex/n8n-telegram-itv`, con una instancia y una consulta simultánea.
 Crear un Blueprint en Render, conectar únicamente este repositorio privado y
