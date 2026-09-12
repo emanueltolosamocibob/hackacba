@@ -45,7 +45,7 @@ Deno.test('clasificarEvento ignora mensajes sin texto', () => {
 
 Deno.test('clasificarEvento procesa un mensaje de texto valido', () => {
   const r = clasificarEvento({ event: 'message', payload: { id: 'msg1', from: '5493511234567@c.us', body: 'AB123CD' } });
-  assertEquals(r, { tipo: 'procesar', idMensaje: 'msg1', telefono: '+5493511234567', texto: 'AB123CD' });
+  assertEquals(r, { tipo: 'procesar', idMensaje: 'msg1', telefono: '+5493511234567', lid: null, texto: 'AB123CD' });
 });
 
 Deno.test('telefonoDesdeChatId soporta @c.us y @s.whatsapp.net', () => {
@@ -195,4 +195,12 @@ Deno.test('formatearReporte en modo demo muestra "sin deuda"/"al dia" para renta
   assertEquals(texto.includes('sin deuda'), true);
   assertEquals(texto.includes('al día'), true);
   assertEquals(texto.includes('itvcordoba.com.ar'), true);
+});
+
+Deno.test('clasificarEvento conserva el LID cuando el remitente no viene como telefono', () => {
+  const r = clasificarEvento({
+    event: 'message',
+    payload: { id: 'msg2', from: '254133282013304@lid', fromMe: false, body: 'AH827BR' },
+  });
+  assertEquals(r, { tipo: 'procesar', idMensaje: 'msg2', telefono: null, lid: '254133282013304@lid', texto: 'AH827BR' });
 });

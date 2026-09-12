@@ -31,7 +31,15 @@ export interface EventoWaha {
 
 export type MensajeEntrante =
   | { tipo: 'ignorar'; razon: 'no_es_mensaje' | 'from_me' | 'no_texto' | 'grupo' }
-  | { tipo: 'procesar'; idMensaje: string; telefono: string; texto: string };
+  | {
+    tipo: 'procesar';
+    idMensaje: string;
+    /** Telefono E.164, o null cuando el remitente llega como LID y hay que resolverlo. */
+    telefono: string | null;
+    /** Identificador interno de WhatsApp (`<digitos>@lid`); WAHA lo traduce a telefono. */
+    lid: string | null;
+    texto: string;
+  };
 
 /** Deriva el telefono E.164 a partir del chatId de WAHA (`<digitos>@c.us` o `@s.whatsapp.net`). */
 export function telefonoDesdeChatId(from: string): string | null {
@@ -53,10 +61,17 @@ export function clasificarEvento(evento: EventoWaha): MensajeEntrante {
   const texto = (payload.body ?? '').trim();
   if (!texto) return { tipo: 'ignorar', razon: 'no_texto' };
 
+  // WhatsApp identifica a muchos remitentes con un LID (`<digitos>@lid`) en vez
+  // del telefono. Esos digitos no son un numero: hay que pedirle a WAHA la
+  // traduccion antes de buscar el vinculo.
+  if (payload.from.endsWith('@lid')) {
+    return { tipo: 'procesar', idMensaje: payload.id, telefono: null, lid: payload.from, texto };
+  }
+
   const telefono = telefonoDesdeChatId(payload.from);
   if (!telefono) return { tipo: 'ignorar', razon: 'no_es_mensaje' };
 
-  return { tipo: 'procesar', idMensaje: payload.id, telefono, texto };
+  return { tipo: 'procesar', idMensaje: payload.id, telefono, lid: null, texto };
 }
 
 export const URL_ALTA = 'https://hackacba.vercel.app/agregar';

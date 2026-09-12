@@ -46,12 +46,35 @@ interface FilaDominio {
   dominio: string;
 }
 
-async function procesarMensaje(telefono: string, texto: string) {
+/**
+ * Traduce un LID de WhatsApp al telefono real con el endpoint de WAHA
+ * `GET /api/{sesion}/lids/{lid}` → `{ lid, pn: "<digitos>@c.us" }`.
+ */
+async function resolverLid(lid: string): Promise<string | null> {
+  const digitosLid = lid.split('@')[0];
+  const url = `${requerido('WAHA_BASE_URL')}/api/${requerido('WAHA_SESION')}/lids/${encodeURIComponent(digitosLid)}`;
+  const respuesta = await fetch(url, {
+    headers: { 'X-Api-Key': requerido('WAHA_API_KEY') },
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!respuesta.ok) return null;
+  const datos = (await respuesta.json()) as { pn?: string };
+  const digitos = datos.pn?.split('@')[0]?.replace(/\D/g, '');
+  return digitos && digitos.length >= 10 ? `+${digitos}` : null;
+}
+
+async function procesarMensaje(telefonoInicial: string | null, lid: string | null, texto: string) {
   const mensajeria = crearProveedorMensajeriaWaha({
     baseUrl: requerido('WAHA_BASE_URL'),
     apiKey: requerido('WAHA_API_KEY'),
     sesion: requerido('WAHA_SESION'),
   });
+
+  const telefono = telefonoInicial ?? (lid ? await resolverLid(lid).catch(() => null) : null);
+  if (!telefono) {
+    console.error('wa-webhook: no se pudo resolver el remitente', lid ?? '(sin lid)');
+    return;
+  }
 
   try {
     const contextos = await rpcServicio<ContextoChat[]>('contexto_chat_whatsapp', { p_telefono: telefono });
@@ -121,7 +144,7 @@ async function manejar(peticion: Request): Promise<Response> {
   if (!esNuevo) return json({ ok: true, duplicado: true }, 200);
 
   // @ts-ignore -- EdgeRuntime existe en el runtime de Supabase Edge Functions, no en el tipado de Deno.
-  EdgeRuntime.waitUntil(procesarMensaje(clasificado.telefono, clasificado.texto));
+  EdgeRuntime.waitUntil(procesarMensaje(clasificado.telefono, clasificado.lid, clasificado.texto));
 
   return json({ ok: true }, 200);
 }
