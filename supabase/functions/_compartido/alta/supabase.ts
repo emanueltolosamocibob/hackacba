@@ -30,12 +30,26 @@ export class ErrorRpc extends Error {
   }
 }
 
+/**
+ * Cabeceras de autenticacion contra PostgREST.
+ *
+ * Un JWT (tres partes) viaja como bearer con la apikey publica al lado. Una
+ * clave nueva de Supabase (`sb_secret_...`, sin puntos) no es un JWT: si se
+ * manda como bearer, PostgREST responde "Expected 3 parts in JWT". El gateway
+ * la reconoce como `apikey` y con eso alcanza para actuar como service_role.
+ */
+function cabecerasDeAutenticacion(token: string): Record<string, string> {
+  const esJwt = token.split('.').length === 3;
+  return esJwt
+    ? { apikey: requerido('SUPABASE_ANON_KEY'), Authorization: `Bearer ${token}` }
+    : { apikey: token };
+}
+
 async function invocarRpc<T>(nombre: string, argumentos: Record<string, unknown>, token: string): Promise<T> {
   const respuesta = await fetch(`${requerido('SUPABASE_URL')}/rest/v1/rpc/${nombre}`, {
     method: 'POST',
     headers: {
-      apikey: requerido('SUPABASE_ANON_KEY'),
-      Authorization: `Bearer ${token}`,
+      ...cabecerasDeAutenticacion(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(argumentos),
