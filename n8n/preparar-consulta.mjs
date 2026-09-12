@@ -10,7 +10,7 @@ export function prepararConsulta(mensaje) {
   } }];
   const formato = /^(?:[A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2}|\d{3}[A-Z]{3}|[A-Z]\d{3}[A-Z]{3})$/;
   const normalizar = valor => valor.replace(/[\s-]/g, '').toUpperCase();
-  const pedirPatente = 'Me falta la patente. Enviá /patente AB672VT o escribí: ¿Cuándo vence la ITV de AB672VT?';
+  const pedirPatente = 'Para consultar la ITV, ingresá la patente del vehículo. Podés enviarla sola o escribir /patente seguido de un espacio y la patente.';
   const invalida = 'No pude reconocer una patente válida. Revisá letras y números; por ejemplo: /patente AB672VT o /patente ABC123.';
   if (!texto || texto.length > 1000) return salida('Enviá una consulta breve con una sola patente, por ejemplo: /patente AB672VT.');
   if (/\b(claves?|tokens?|credenciales?|secrets?|prompts?|instrucciones?\s+(?:del\s+)?sistema)\b/.test(simple)) {
