@@ -37,7 +37,7 @@ export function CampoTelefono({
   const idError = useId();
 
   const digitos = soloDigitos(valor);
-  const suficiente = digitos.length >= 10;
+  const suficiente = digitos.length === 10;
   const enviando = estado === 'enviando';
   const hayError = estado === 'error' && Boolean(error);
 
@@ -67,7 +67,7 @@ export function CampoTelefono({
           .join(' ')}
       >
         <span className={estilos.prefijo} aria-hidden="true">
-          +54
+          +54 9
         </span>
         <input
           id={idCampo}
