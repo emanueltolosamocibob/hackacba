@@ -1,0 +1,53 @@
+{
+  "status": { "messages": ["Datos solicitados correctamente"], "success": true },
+  "data": {
+    "obj_id": null,
+    "obj_dato": "AH827BR",
+    "deudas": [],
+    "juicios": [],
+    "planes": [],
+    "multas": [
+      {
+        "trib_id": 9,
+        "ctacte_id": 308148037,
+        "anio": 2026,
+        "cuota": 1,
+        "cuota_nom": "1",
+        "fchvenc": "2026-09-12",
+        "nominal": 13276.8,
+        "descuento": 8851.2,
+        "multa": 0,
+        "accesor": 0,
+        "saldo": 13276.8,
+        "ref": "F0223966",
+        "est": "D",
+        "est_nom": "Deuda",
+        "causa": "F0223966",
+        "infrac": "NO ABONAR ESTACIONAMIENTO TARIFADO",
+        "infrac_fecha": "2026-02-24",
+        "ident": "AH827BR"
+      },
+      {
+        "trib_id": 9,
+        "ctacte_id": 311291660,
+        "anio": 2026,
+        "cuota": 1,
+        "cuota_nom": "1",
+        "fchvenc": "2026-09-12",
+        "nominal": 19747.2,
+        "descuento": 13164.8,
+        "multa": 0,
+        "accesor": 0,
+        "saldo": 19747.2,
+        "ref": "F0336457",
+        "est": "D",
+        "est_nom": "Deuda",
+        "causa": "F0336457",
+        "infrac": "NO ABONAR ESTACIONAMIENTO TARIFADO",
+        "infrac_fecha": "2026-07-30",
+        "ident": "AH827BR"
+      }
+    ],
+    "exenciones": []
+  }
+}

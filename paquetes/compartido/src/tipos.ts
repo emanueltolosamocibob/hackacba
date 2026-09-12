@@ -293,6 +293,21 @@ export type Database = {
         }
         Relationships: []
       }
+      mensajes_whatsapp_procesados: {
+        Row: {
+          id_mensaje: string
+          recibido_en: string
+        }
+        Insert: {
+          id_mensaje: string
+          recibido_en?: string
+        }
+        Update: {
+          id_mensaje?: string
+          recibido_en?: string
+        }
+        Relationships: []
+      }
       miembros: {
         Row: {
           actualizado_en: string
@@ -835,6 +850,7 @@ export type Database = {
           organizacion_activa_id: string | null
           telefono: string | null
           telefono_clave: string | null
+          ultimo_dominio: string | null
           ultimo_uso_en: string | null
           usuario_id: string
           vinculado_en: string
@@ -848,6 +864,7 @@ export type Database = {
           organizacion_activa_id?: string | null
           telefono?: string | null
           telefono_clave?: string | null
+          ultimo_dominio?: string | null
           ultimo_uso_en?: string | null
           usuario_id: string
           vinculado_en?: string
@@ -861,6 +878,7 @@ export type Database = {
           organizacion_activa_id?: string | null
           telefono?: string | null
           telefono_clave?: string | null
+          ultimo_dominio?: string | null
           ultimo_uso_en?: string | null
           usuario_id?: string
           vinculado_en?: string
@@ -997,6 +1015,15 @@ export type Database = {
         }
         Returns: Json
       }
+      contexto_chat_whatsapp: {
+        Args: { p_telefono: string }
+        Returns: {
+          nombre_organizacion: string
+          organizacion_id: string
+          ultimo_dominio: string
+          usuario_id: string
+        }[]
+      }
       crear_invitacion: {
         Args: {
           p_dias_validez?: number
@@ -1015,6 +1042,12 @@ export type Database = {
         Returns: boolean
       }
       detalle_vehiculo: { Args: { p_vehiculo_id: string }; Returns: Json }
+      dominios_de_chat: {
+        Args: { p_organizacion_id: string }
+        Returns: {
+          dominio: string
+        }[]
+      }
       es_miembro: { Args: { p_organizacion_id: string }; Returns: boolean }
       es_tarea_de_sistema: { Args: never; Returns: boolean }
       estado_segun_pagos: {
@@ -1050,6 +1083,7 @@ export type Database = {
       }
       link_de_pago: { Args: { p_vencimiento_id: string }; Returns: Json }
       mantenimiento_alta_whatsapp: { Args: never; Returns: undefined }
+      marcar_mensaje_procesado: { Args: { p_id: string }; Returns: boolean }
       meses_por_frecuencia: {
         Args: { p_frecuencia: Database["public"]["Enums"]["frecuencia"] }
         Returns: number
@@ -1068,6 +1102,17 @@ export type Database = {
       recalcular_resumen_flota: {
         Args: { p_flota_id: string }
         Returns: undefined
+      }
+      registrar_dominio_chat: {
+        Args: {
+          p_dominio: string
+          p_organizacion_id: string
+          p_telefono?: string
+        }
+        Returns: {
+          es_nuevo: boolean
+          vehiculo_id: string
+        }[]
       }
       reporte_gastos: {
         Args: {

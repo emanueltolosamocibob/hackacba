@@ -411,6 +411,15 @@ verify_jwt = false
 [functions.finalizar-alta-landing]
 verify_jwt = true
 
+# ---------------------------------------------------------------------------
+# wa-webhook: lo llama WAHA, que tampoco manda un JWT de Supabase (igual que
+# telegram y enviar-otp-whatsapp arriba). Lo protege el header
+# X-Webhook-Secret comparado con WA_WEBHOOK_SECRET en tiempo constante.
+# ---------------------------------------------------------------------------
+
+[functions.wa-webhook]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
