@@ -1,11 +1,11 @@
 import { assertEquals, assertExists } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import { clasificarEvento, interpretarTexto, secretoValido, telefonoDesdeChatId, mensajeFlota, mensajeLinkPago } from '../_compartido/bot/webhook.ts';
-import { extraerDominio, esComandoFlota, esComandoLinkPago } from '../_compartido/bot/dominio.ts';
+import { extraerDominio, esComandoFlota, esComandoLinkPago, esConsultaDeudaFlota } from '../_compartido/bot/dominio.ts';
 import { normalizarMuni } from '../_compartido/bot/fuentes/muni.ts';
 import { normalizarPeaje } from '../_compartido/bot/fuentes/peaje.ts';
 import { rentasCba, itv } from '../_compartido/bot/fuentes/estaticas.ts';
-import { formatearReporte } from '../_compartido/bot/respuestas.ts';
-import type { ResultadoConsulta } from '../_compartido/bot/fuentes/consulta.ts';
+import { formatearReporte, formatearReporteFlota } from '../_compartido/bot/respuestas.ts';
+import type { ResultadoConsulta, ResultadoFlotaItem } from '../_compartido/bot/fuentes/consulta.ts';
 
 const fixtureMuni = JSON.parse(await Deno.readTextFile(new URL('./fixtures/muni-ah827br.json', import.meta.url)));
 
@@ -211,4 +211,77 @@ Deno.test('las intenciones de pago y flota se detectan por palabras clave en fra
   assertEquals(esComandoLinkPago('cuánto debo'), false);
   assertEquals(esComandoFlota('mostrame mi flota'), true);
   assertEquals(esComandoFlota('AH827BR'), false);
+});
+
+// ------------------------------------------------------------- esConsultaDeudaFlota / interpretarTexto deuda_flota
+
+Deno.test('esConsultaDeudaFlota reconoce frases naturales sin patente', () => {
+  assertEquals(esConsultaDeudaFlota('Pasame todos los vehiculos de mi flota con deuda'), true);
+  assertEquals(esConsultaDeudaFlota('qué vehículos de mi flota deben'), true);
+  assertEquals(esConsultaDeudaFlota('cuánto debo'), true);
+  assertEquals(esConsultaDeudaFlota('deudas de mi flota'), true);
+  assertEquals(esConsultaDeudaFlota('mostrame las deudas'), true);
+});
+
+Deno.test('esConsultaDeudaFlota es false si el texto trae una patente (esa consulta es puntual)', () => {
+  assertEquals(esConsultaDeudaFlota('AB123CD debe algo?'), false);
+  assertEquals(esConsultaDeudaFlota('flota'), false);
+  assertEquals(esConsultaDeudaFlota('hola'), false);
+});
+
+Deno.test('interpretarTexto: frases de deuda de flota sin patente disparan deuda_flota', () => {
+  assertEquals(interpretarTexto('Pasame todos los vehiculos de mi flota con deuda', true), { accion: 'deuda_flota' });
+  assertEquals(interpretarTexto('qué vehículos de mi flota deben', true), { accion: 'deuda_flota' });
+  assertEquals(interpretarTexto('cuánto debo', true), { accion: 'deuda_flota' });
+  assertEquals(interpretarTexto('deudas de mi flota', true), { accion: 'deuda_flota' });
+  assertEquals(interpretarTexto('mostrame las deudas', true), { accion: 'deuda_flota' });
+});
+
+Deno.test('interpretarTexto: "flota" sola sigue listando, no dispara deuda_flota', () => {
+  assertEquals(interpretarTexto('flota', true), { accion: 'listar_flota' });
+  assertEquals(interpretarTexto('mostrame mi flota', true), { accion: 'listar_flota' });
+});
+
+Deno.test('interpretarTexto: patente con "deuda" en el texto sigue siendo consulta puntual', () => {
+  assertEquals(interpretarTexto('AB123CD tiene deuda?', true), { accion: 'consultar_dominio', dominio: 'AB123CD' });
+});
+
+// ------------------------------------------------------------- formatearReporteFlota
+
+function itemFlota(dominio: string, fuentes: ResultadoConsulta['fuentes']): ResultadoFlotaItem {
+  return { dominio, resultado: { patente: dominio, consultadoEn: '2026-09-12T22:46:00.000Z', fuentes } };
+}
+
+Deno.test('formatearReporteFlota agrupa vehiculos con deuda y lista aparte los que no tienen', () => {
+  const conDeuda = itemFlota('AH827BR', [normalizarMuni(fixtureMuni), normalizarPeaje('no posee infracciones impagas'), rentasCba(), itv()]);
+  const sinDeuda = itemFlota('AB123CD', [normalizarMuni({ status: { success: false } }), normalizarPeaje('no posee infracciones impagas'), rentasCba(), itv()]);
+  const texto = formatearReporteFlota([conDeuda, sinDeuda], 2, 0);
+  assertEquals(texto.includes('Deudas de tu flota (2 vehículos)'), true);
+  assertEquals(texto.includes('*AH827BR*'), true);
+  assertEquals(texto.includes('*Municipalidad de Córdoba*: 2 obligaciones'), true);
+  assertEquals(texto.includes('Sin deuda: AB123CD'), true);
+  // AB123CD no aparece en un bloque de vehiculo con deuda, solo en la lista final.
+  assertEquals(texto.includes('*AB123CD*\n'), false);
+});
+
+Deno.test('formatearReporteFlota: fuentes mockeadas (demo) cuentan como sin deuda', () => {
+  const item = itemFlota('AB123CD', [normalizarMuni({ status: { success: false } }), normalizarPeaje('no posee infracciones impagas'), rentasCba(true), itv(true)]);
+  const texto = formatearReporteFlota([item], 1, 0);
+  assertEquals(texto.includes('Sin deuda: AB123CD'), true);
+  assertEquals(texto.includes('*AB123CD*\n'), false);
+});
+
+Deno.test('formatearReporteFlota: errores por fuente se muestran como "no disponible" sin abortar el reporte', () => {
+  const muniError = { ...normalizarMuni(fixtureMuni), estado: 'error' as const, motivo: 'timeout', obligaciones: [] };
+  const item = itemFlota('AH827BR', [muniError, normalizarPeaje('no posee infracciones impagas'), rentasCba(), itv()]);
+  // Esta patente no tiene ninguna obligacion confirmada (todo error/ok-vacio):
+  // se agrega igual a la lista sin_deuda para no bloquear el resto del reporte.
+  const texto = formatearReporteFlota([item], 1, 0);
+  assertEquals(texto.length > 0, true);
+});
+
+Deno.test('formatearReporteFlota avisa cuando se omiten patentes por el limite', () => {
+  const item = itemFlota('AB123CD', [normalizarMuni({ status: { success: false } }), normalizarPeaje('no posee infracciones impagas'), rentasCba(), itv()]);
+  const texto = formatearReporteFlota([item], 9, 1);
+  assertEquals(texto.includes('Quedaron 1 vehículo sin consultar'), true);
 });

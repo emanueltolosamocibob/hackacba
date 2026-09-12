@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { timingSafeEqual } from 'https://deno.land/std@0.224.0/crypto/timing_safe_equal.ts';
-import { extraerDominio, esComandoFlota, esComandoLinkPago } from './dominio.ts';
+import { extraerDominio, esComandoFlota, esComandoLinkPago, esConsultaDeudaFlota } from './dominio.ts';
 
 /** Comparacion en tiempo constante del secreto compartido con WAHA (SPEC parr. 10). */
 export function secretoValido(recibido: string | null, esperado: string): boolean {
@@ -79,6 +79,7 @@ export const URL_ALTA = 'https://hackacba.vercel.app/agregar';
 export type Intencion =
   | { accion: 'sin_registrar' }
   | { accion: 'listar_flota' }
+  | { accion: 'deuda_flota' }
   | { accion: 'consultar_dominio'; dominio: string }
   | { accion: 'link_pago' }
   | { accion: 'ayuda' };
@@ -87,6 +88,9 @@ export type Intencion =
 export function interpretarTexto(texto: string, registrado: boolean): Intencion {
   if (!registrado) return { accion: 'sin_registrar' };
   if (esComandoLinkPago(texto)) return { accion: 'link_pago' };
+  // Va antes de listar_flota/consultar_dominio: "deudas de mi flota" tambien
+  // matchea la palabra "flota", y "cuánto debo" no trae ninguna patente.
+  if (esConsultaDeudaFlota(texto)) return { accion: 'deuda_flota' };
   if (esComandoFlota(texto)) return { accion: 'listar_flota' };
   const dominio = extraerDominio(texto);
   if (dominio) return { accion: 'consultar_dominio', dominio };

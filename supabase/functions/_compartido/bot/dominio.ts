@@ -35,6 +35,7 @@ function sinAcentos(valor: string): string {
 // gente escribe "quiero pagar la municipal" o "mostrame mi flota", no comandos.
 const PALABRAS_FLOTA = /\b(flota|mis (vehiculos|autos|dominios|patentes|camiones))\b/;
 const PALABRAS_LINK_PAGO = /\b(link|links|enlace|pagar|pago|pagos|boleta|abonar)\b/;
+const PALABRAS_DEUDA_FLOTA = /\b(deuda|deudas|debo|deben|vencid\w*)\b/;
 
 /** Insensible a mayusculas y acentos: "Flóta", "FLOTA" y "flota" matchean igual. */
 export function esComandoFlota(texto: string): boolean {
@@ -44,4 +45,15 @@ export function esComandoFlota(texto: string): boolean {
 /** Insensible a mayusculas y acentos: "Pagár", "PAGAR" y "pagar" matchean igual. */
 export function esComandoLinkPago(texto: string): boolean {
   return PALABRAS_LINK_PAGO.test(sinAcentos(texto.trim().toLowerCase()));
+}
+
+/**
+ * "Pasame todos los vehiculos de mi flota con deuda", "cuánto debo", etc: pide
+ * el estado de TODA la flota, no de una patente puntual. Si el texto trae una
+ * patente reconocible, no es esta intencion (es consultar_dominio de esa
+ * patente puntual, aunque tambien mencione la palabra "deuda").
+ */
+export function esConsultaDeudaFlota(texto: string): boolean {
+  if (extraerDominio(texto)) return false;
+  return PALABRAS_DEUDA_FLOTA.test(sinAcentos(texto.trim().toLowerCase()));
 }

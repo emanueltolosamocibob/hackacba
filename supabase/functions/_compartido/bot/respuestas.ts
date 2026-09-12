@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { FuenteResultado, ObligacionNormalizada } from './fuentes/tipos.ts';
-import type { ResultadoConsulta } from './fuentes/consulta.ts';
+import type { ResultadoConsulta, ResultadoFlotaItem } from './fuentes/consulta.ts';
 
 function pesosArgentinos(importe: string): string {
   const [entero, decimales] = importe.split('.');
@@ -92,4 +92,61 @@ export function formatearReporte(resultado: ResultadoConsulta): string {
     'Los montos incluyen recargos y cambian con el tiempo; el importe final es el del portal.',
     `Datos al ${dd}/${mm} ${hh}:${min}.`,
   ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Reporte consolidado de flota (intencion "deuda_flota"): un mensaje con
+// todos los vehiculos que tienen deuda, y al final la lista de los que no.
+// ---------------------------------------------------------------------------
+
+function bulletCorto(o: ObligacionNormalizada): string {
+  const fecha = fechaCorta(o.vencimiento ?? o.fechaInfraccion);
+  return `• ${o.concepto} — vence ${fecha} — ${pesosArgentinos(o.importe)}`;
+}
+
+/** null si esa fuente no aporta nada al reporte de flota (sin deuda, sin error). */
+function bloqueFuenteFlota(f: FuenteResultado): string | null {
+  if (f.estado === 'error') return `*${f.nombre}*: no disponible`;
+  if (f.obligaciones.length === 0) return null;
+  const top2 = [...f.obligaciones].sort((a, b) => Number(b.importe) - Number(a.importe)).slice(0, 2);
+  const etiqueta = f.obligaciones.length === 1 ? 'obligación' : 'obligaciones';
+  return [
+    `*${f.nombre}*: ${f.obligaciones.length} ${etiqueta}, total ${totalObligaciones(f.obligaciones)}`,
+    ...top2.map(bulletCorto),
+  ].join('\n');
+}
+
+export function formatearReporteFlota(items: ResultadoFlotaItem[], totalFlota: number, omitidas: number): string {
+  const conDeuda: string[] = [];
+  const sinDeuda: string[] = [];
+
+  for (const item of items) {
+    const tieneDeuda = item.resultado.fuentes.some(f => f.obligaciones.length > 0);
+    if (!tieneDeuda) {
+      sinDeuda.push(item.dominio);
+      continue;
+    }
+    const bloquesFuente = item.resultado.fuentes
+      .map(bloqueFuenteFlota)
+      .filter((b): b is string => b !== null);
+    conDeuda.push([`*${item.dominio}*`, ...bloquesFuente].join('\n'));
+  }
+
+  const lineas = [`Deudas de tu flota (${totalFlota} vehículos)`, ''];
+
+  if (conDeuda.length > 0) {
+    lineas.push(...conDeuda.flatMap(b => [b, '']));
+  } else {
+    lineas.push('No encontramos deuda en los vehículos consultados.', '');
+  }
+
+  if (sinDeuda.length > 0) {
+    lineas.push(`Sin deuda: ${sinDeuda.join(', ')}`);
+  }
+
+  if (omitidas > 0) {
+    lineas.push(`Quedaron ${omitidas} vehículo${omitidas === 1 ? '' : 's'} sin consultar en este mensaje; pedime la patente puntual si la necesitás.`);
+  }
+
+  return lineas.join('\n').trim();
 }
