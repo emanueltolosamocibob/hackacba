@@ -17,7 +17,8 @@
     "verificar:realtime": "node --env-file=.env supabase/tests/verificar-realtime.mjs",
     "verificar:tipos": "tsc --noEmit --project paquetes/compartido/tsconfig.json",
     "verificar:todo": "npm run verificar && npm run verificar:realtime && npm run verificar:tipos",
-    "demo": "node --env-file=.env supabase/semillas/demo.mjs"
+    "demo": "node --env-file=.env supabase/semillas/demo.mjs",
+    "n8n:test": "node --test n8n/preparar-consulta.test.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.116.0",

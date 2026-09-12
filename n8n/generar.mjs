@@ -1,22 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { prepararConsulta } from './preparar-consulta.mjs';
 
 const sistema = readFileSync(new URL('./system-message.txt', import.meta.url), 'utf8');
 const nodo = (id, name, type, typeVersion, position, parameters, extra = {}) =>
   ({ id, name, type, typeVersion, position, parameters, ...extra });
 const edge = (node, type = 'main', index = 0) => ({ node, type, index });
-const preparar = `const mensaje = $json.message;
-// No responder en grupos ni procesar mensajes de otros bots.
-if (!mensaje || mensaje.chat?.type !== 'private' || !mensaje.from || mensaje.from.is_bot || typeof mensaje.text !== 'string') return [];
-const texto = mensaje.text.trim();
-const match = texto.match(/^\\/patente(?:@[A-Za-z0-9_]+)?\\s+([A-Za-z0-9\\s-]+)$/i);
-const dominio = match ? match[1].replace(/[\\s-]/g, '').toUpperCase() : '';
-const valido = /^(?:[A-Z]{3}\\d{3}|[A-Z]{2}\\d{3}[A-Z]{2}|\\d{3}[A-Z]{3}|[A-Z]\\d{3}[A-Z]{3})$/.test(dominio);
-return [{json: {
-  dominio, consultar: valido,
-  chat_id: String(mensaje.chat.id),
-  contexto_id: String(mensaje.chat.id) + ':' + String(mensaje.from.id),
-  respuesta: 'Hola. Consultá la última ITV de Córdoba con /patente AB672VT. No consulto seguros ni otras jurisdicciones.'
-}}];`;
+const preparar = `return (${prepararConsulta.toString()})($json.message);`;
 
 const httpBase = {
   method: 'POST', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
