@@ -1,0 +1,179 @@
+/* =============================================================================
+   Home. Modo Persuade: un desconocido tiene que entender que es esto, por que
+   importa y que hacer, en segundos.
+
+   El primer viewport es la tesis, no un encabezado: el hilo ya esta pasando.
+   El titulo arriba, el hilo como pieza principal, y el campo del telefono
+   justo debajo, donde iria la respuesta del dueño. No hay cards de icono mas
+   titulo mas texto en ninguna parte; la division es el renglon.
+   ============================================================================= */
+
+.pagina {
+  padding-bottom: var(--e9);
+}
+
+/* ----------------------------------------------------------- primer viewport */
+
+.primero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e7);
+  padding-top: clamp(var(--e7), 7vh, var(--e8));
+  padding-bottom: var(--e6);
+  text-align: center;
+}
+
+.titular {
+  max-width: 32rem;
+}
+
+/* El unico momento de movimiento autorado: el hilo se bruñe desde el negro.
+   Arranca visible, nunca en opacidad cero. */
+.hilo {
+  width: 100%;
+  animation: brunir 1200ms var(--salida) both;
+}
+
+@keyframes brunir {
+  from {
+    filter: brightness(0.5);
+    transform: translateY(0.75rem);
+  }
+  to {
+    filter: brightness(1);
+    transform: none;
+  }
+}
+
+.accion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e4);
+  width: 100%;
+  max-width: 31rem;
+  padding-top: var(--e2);
+}
+
+.ejemplo {
+  max-width: 31rem;
+  color: var(--tinta-3);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------- vencimientos */
+
+.seccion {
+  padding-top: var(--e8);
+}
+
+.seccionTitulo {
+  max-width: 32rem;
+  /* Mas aire arriba de un titulo que abajo. */
+  margin-bottom: var(--e4);
+}
+
+.seccionTexto {
+  color: var(--tinta-2);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.catalogo {
+  margin: var(--e6) 0 0;
+  padding: 0;
+  border-top: 1px solid rgba(76, 127, 212, 0.4);
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--e1) var(--e5);
+  padding: var(--e4) 0;
+  border-bottom: 1px solid var(--regla);
+}
+
+.filaNombre {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--tinta);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.filaOrganismo {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  font-stretch: 96%;
+  text-align: right;
+}
+
+.filaSinOrganismo {
+  color: var(--tinta-3);
+}
+
+.filaAmbito {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 0;
+  color: #7ba2df;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-stretch: 94%;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------- cierre */
+
+.cierre {
+  margin-top: var(--e8);
+  padding-top: var(--e5);
+  border-top: 1px solid var(--regla-fuerte);
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.cierreLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 38rem;
+}
+
+/* En pantalla angosta el organismo no pelea el renglon con un nombre que
+   envuelve: baja abajo y se alinea a la izquierda. */
+@media (max-width: 34rem) {
+  .fila {
+    grid-template-columns: 1fr;
+    gap: var(--e1);
+  }
+
+  .filaOrganismo {
+    grid-column: 1;
+    grid-row: 2;
+    text-align: left;
+  }
+
+  .filaAmbito {
+    grid-row: 3;
+  }
+}
+
+@media (min-width: 48rem) {
+  .fila {
+    grid-template-columns: minmax(0, 28rem) auto;
+    justify-content: space-between;
+  }
+}

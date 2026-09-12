@@ -13,3 +13,7 @@ supabase/.temp
 # busca en ~/.impeccable/bin o lo baja a su cache, asi que no va en git.
 .claude/skills/impeccable/scripts/bin/
 .cursor/skills/impeccable/scripts/bin/
+
+# Capturas de la ronda de inspeccion de impeccable: 2 MB regenerables con
+# `node capturar.mjs`. El surface brief de al lado si se commitea.
+paquetes/web/.impeccable/review/

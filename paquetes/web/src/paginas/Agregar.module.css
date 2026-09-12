@@ -1,0 +1,227 @@
+/* =============================================================================
+   Alta. Modo Operate: la persona ya decidio y viene a completar una tarea.
+
+   Mismo mundo que el home, registro distinto. Sin coreografia de entrada: se
+   carga dentro de la tarea. Todo un punto mas grande y un paso mas de
+   contraste que el home, porque esto se completa con una mana, en la calle,
+   con el sol de frente.
+
+   El segundo paso esta disenado completo y trabado a proposito: el canal de
+   WhatsApp no esta conectado y la interfaz no simula que mando nada.
+   ============================================================================= */
+
+.pagina {
+  min-height: 100dvh;
+  padding-block: var(--e5) var(--e8);
+}
+
+/* Alinea la salida con la columna del cuerpo, no con el borde de la pagina. */
+.cabecera {
+  max-width: 34rem;
+  margin-inline: auto;
+}
+
+.volver {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  min-height: 2.75rem;
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.volver:hover {
+  color: var(--tinta);
+}
+
+.cuerpo {
+  max-width: 34rem;
+  margin-top: var(--e6);
+  margin-inline: auto;
+}
+
+/* Monoespaciada para un nombre de funcion de la base: es codigo, no disfraz. */
+.codigoInline {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(76, 127, 212, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(76, 127, 212, 0.26);
+  color: #a8c6f2;
+  font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+  font-size: 0.875em;
+}
+
+.titulo {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  line-height: 1.08;
+}
+
+.entrada {
+  margin-top: var(--e4);
+  color: var(--tinta-2);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+/* ------------------------------------------------------------------- pasos */
+
+.pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: var(--e7);
+  padding: 0;
+  list-style: none;
+  counter-reset: paso;
+}
+
+.paso {
+  padding-block: var(--e6);
+  border-top: 1px solid var(--regla-fuerte);
+}
+
+.paso:last-child {
+  border-bottom: 1px solid var(--regla-fuerte);
+}
+
+.pasoCabeza {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e3);
+}
+
+.pasoNumero {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--tinta-3);
+}
+
+.pasoTitulo {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+  color: var(--tinta);
+}
+
+.pasoTrabado .pasoTitulo {
+  color: var(--tinta-2);
+}
+
+.pasoContenido {
+  margin-top: var(--e5);
+}
+
+/* ----------------------------------------------------- el codigo, trabado */
+
+.codigoMarco {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e4);
+}
+
+.codigo {
+  width: 100%;
+  max-width: 22rem;
+  min-height: 4.25rem;
+  padding: 0 var(--e4);
+  border: 0;
+  border-radius: 14px;
+  background: rgba(5, 6, 7, 0.5);
+  box-shadow: inset 0 0 0 1px var(--regla);
+  color: var(--tinta-3);
+  font: inherit;
+  font-size: 1.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.42em;
+  text-align: center;
+  cursor: not-allowed;
+}
+
+.codigo::placeholder {
+  color: rgba(139, 145, 141, 0.55);
+}
+
+/* El muro honesto. Es un estado real de la interfaz, no un error. */
+.muro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e3);
+  padding: var(--e5);
+  border-radius: 14px;
+  background: var(--negro-panel);
+  box-shadow: inset 0 0 0 1px var(--regla);
+}
+
+.muroTitulo {
+  color: var(--tinta);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.muroTexto {
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.muroLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e2);
+  margin: 0;
+  padding-left: var(--e5);
+  color: var(--tinta-2);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.recibido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--e2) var(--e3);
+  padding-block: var(--e3);
+  color: var(--tinta);
+  font-size: 1.0625rem;
+}
+
+.recibidoNumero {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.cambiar {
+  background: none;
+  border: 0;
+  padding: var(--e2) 0;
+  min-height: 2.75rem;
+  color: var(--tinta-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-decoration: underline;
+  text-decoration-color: var(--regla-fuerte);
+  text-underline-offset: 0.22em;
+  cursor: pointer;
+}
+
+.cambiar:hover {
+  color: var(--tinta);
+  text-decoration-color: var(--tinta);
+}
+
+.pie {
+  margin-top: var(--e7);
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 34rem;
+}

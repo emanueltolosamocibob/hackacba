@@ -1,0 +1,16 @@
+.pagina {
+  padding-block: var(--e9);
+}
+
+.titulo {
+  max-width: 26rem;
+}
+
+.texto {
+  margin-top: var(--e4);
+  color: var(--tinta-2);
+}
+
+.salida {
+  margin-top: var(--e6);
+}
