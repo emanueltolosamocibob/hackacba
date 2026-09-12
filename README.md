@@ -142,6 +142,10 @@ Solo la interfaz: bot de Telegram con agente conversacional, y más adelante una
 Mini App en React + TypeScript. `paquetes/compartido` ya está listo para las
 dos, con tipos generados del esquema real y esquemas zod de validación.
 
+**Para construir el bot: [BOT.md](BOT.md)** — el reparto de responsabilidades,
+cómo un chat de Telegram obtiene un JWT, las firmas exactas de la API, el
+despacho de la cola de avisos y lo que todavía falta en la base.
+
 **No hay Edge Functions todavía, y es a propósito**: hasta acá toda la lógica se
 expresa en Postgres, y `pg_cron` llama a `tarea_diaria()` sin intermediarios.
 La primera Edge Function va a ser el webhook de Telegram.
