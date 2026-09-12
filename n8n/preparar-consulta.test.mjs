@@ -17,9 +17,9 @@ test('comando, patente sola y preguntas ITV llegan a la misma patente validada',
 
 test('entradas incompletas, inválidas o ambiguas no consultan una placa equivocada', () => {
   const casos = [
-    ['/patente', /Me falta la patente/], ['/patente AB672V!', /patente válida/],
+    ['/patente', /ingresá la patente del vehículo/], ['/patente AB672V!', /patente válida/],
     ['/patente AB672VT ABC123', /patente válida/],
-    ['¿Cuándo vence la ITV?', /Me falta la patente/],
+    ['¿Cuándo vence la ITV?', /ingresá la patente del vehículo/],
     ['¿Cuándo vence la ITV de AB672V?', /patente válida/],
     ['ITV AB672VT y ABC123', /un vehículo por mensaje/],
     ['ITV XAB672VTX', /patente válida/],
