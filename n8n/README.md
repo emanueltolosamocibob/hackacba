@@ -61,8 +61,10 @@ El servicio de esta sesión se desplegó desde una copia independiente del módu
 en el repositorio privado `BeEasy000/telegram-itv-service`, porque la cuenta
 colaboradora no puede instalar la integración Render sobre `hackacba`.
 URL: https://telegram-itv-service.onrender.com. Se verificó `/health` (200) y
-rechazo sin clave (401). El workflow de n8n ya tiene las dos URLs; la credencial
-está pendiente de autorización y aún falta probar una consulta completa.
+rechazo sin clave (401). El workflow de n8n tiene ambas URLs y la credencial restringida al servicio.
+La consulta completa con GPT-6 Astra y Telegram pasó el 2026-09-12:
+AB672VT, inspección 31/07/26, vencimiento 31/07/27, estado No Vencida
+(consultado en 2026-09-12T05:24:48.968Z). El workflow quedó publicado.
 
 `hackacba` sigue siendo el proyecto principal. Esta copia incluye solamente
 el módulo ITV; los cambios deben sincronizarse explícitamente. No copia datos ni
@@ -115,7 +117,8 @@ Configurar:
 | Ambas herramientas HTTP | Header Auth: nombre `Authorization`, valor `Bearer <ITV_API_KEY>` |
 
 El modelo disponible depende de la cuenta y de la compatibilidad de su nodo.
-No se ha ejecutado una llamada al modelo como parte de la prueba local. Para
+Las pruebas locales no llaman al modelo; GPT-6 Astra fue verificado en la
+prueba real de n8n Gateway con las dos herramientas. Para
 cambiarlo, modificar el nodo; no alcanza con nombrarlo en el System Message.
 
 `contexto_id` y `dominio` vienen de `Preparar consulta`, fuera del control del
@@ -176,13 +179,15 @@ Los tests usan un adaptador simulado: cubren normalización, las 200 formas de
 operación, aislamiento entre contextos, expiración, límite concurrente,
 autenticación y errores sin resultados inventados. No prueban la disponibilidad
 del sitio ni la interpretación del modelo. Los selectores proceden de la prueba
-manual del formulario; el adaptador Playwright usa el postback de ASP.NET y
-debe verificarse contra el sitio antes de publicar.
+manual del formulario. La prueba real detectó un postback asíncrono de ASP.NET
+UpdatePanel; se corrigió la espera para detectar respuesta POST y tabla visible.
+El recorrido completo fue verificado antes de publicar.
 
-Prueba de integración pendiente en n8n: conectar las tres credenciales/servicios,
-ejecutar `/start`, luego `/patente AB672VT`, verificar ambas llamadas y comparar
-el resultado con ITV. Probar también formato inválido, timeout y consultas
-simultáneas de usuarios distintos. Verificar que ningún token aparezca en logs.
+Integración verificada en n8n: Telegram, Gateway y servicio autenticado;
+`/start`, luego `/patente AB672VT`, ambas herramientas y respuesta real del sitio.
+Un fallo del postback produjo un mensaje de error sin inventar estado ITV.
+Pendiente: medir arranque en frío y carga simultánea de usuarios distintos.
+No incluir tokens en logs.
 
 No se ejecutan migraciones, seeds ni verificaciones contra la base remota: este
 cambio no toca el esquema ni tiene credenciales de Supabase. El módulo tampoco
