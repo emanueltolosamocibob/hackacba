@@ -29,34 +29,70 @@ una migración, no en el bot.
 
 ---
 
-## 2. Lo que falta en la base
+## 2. El alta de usuarios (migraciones 0012-0015)
 
-**Una migración `0012`**, que es lo primero a escribir. Hoy no existe forma de
-saber qué usuario de Supabase está detrás de un `chat_id` de Telegram.
+**El único perfil real del producto es la persona administrativa que paga.** No
+hay choferes ni usuarios de consulta. Todo el alta está resuelto en la base.
 
-```sql
-create table public.vinculos_telegram (
-  id                 uuid primary key default gen_random_uuid(),
-  usuario_id         uuid not null references auth.users (id) on delete cascade,
-  telegram_user_id   bigint not null unique,
-  chat_id            bigint not null,
-  nombre_telegram    text,
-  refresh_token      text,          -- ver seccion 3
-  vinculado_en       timestamptz not null default now(),
-  ultimo_uso_en      timestamptz,
-  unique (usuario_id, telegram_user_id)
-);
+### El flujo, de punta a punta
+
+```
+1. Vos, con service_role:
+     registrar_organizacion('Transportes X', '+54 351 400 1234')
+     -> crea la organizacion, le siembra el catalogo de Cordoba,
+        le crea la regla de aviso, y deja una invitacion de propietario
+        esperando ese numero
+
+2. La persona abre el bot y toca "Compartir mi numero"
+     (boton request_contact del teclado de Telegram)
+
+3. El bot:
+     a. VERIFICA que contact.user_id === message.from.id
+     b. crea la cuenta de auth con ese telefono/email
+     c. canjear_por_telefono(numero, usuario_id, telegram_user_id, chat_id)
+
+4. Adentro, como propietario.
 ```
 
-Va con RLS (cada usuario ve solo su propio vínculo) y **sin `GRANT` a
-`authenticated`** sobre `refresh_token`: esa columna la toca únicamente el bot con
-`service_role`. Lo más simple es no exponer la tabla por PostgREST y dejarla solo
-para el backend.
+### Por qué por número y no por código
 
-Hace falta además una tabla o columna de **códigos de invitación**: el flujo de
-alta es que un administrador genera un código y el usuario lo canjea con
-`/start <codigo>`. Sin eso, cualquiera que encuentre el bot puede intentar
-vincularse.
+Telegram **garantiza** el número: con `request_contact` no es un campo que el
+usuario tipea, es el número con el que se registró. Un código de invitación se
+puede reenviar a quien no era; un número verificado, no. Y encaja con cómo piensa
+un dueño de flota: no tiene códigos, tiene los teléfonos de su gente.
+
+El canje por código (`canjear_invitacion`) sigue existiendo para cuando no tenés
+el número, o para mandar un `t.me/<bot>?start=<codigo>` y listo.
+
+> **El error que rompe todo.** El objeto `contact` de Telegram trae `user_id`
+> **solo si el contacto es el del propio remitente**. Si el bot no comprueba
+> `message.contact.user_id === message.from.id`, cualquiera reenvía la tarjeta de
+> contacto de otra persona y entra como ella. Es una línea de código y es la
+> diferencia entre un número verificado y uno declarado.
+
+### Normalización de teléfonos
+
+Ya está resuelta en la base: `+54 9 351 123-4567`, `0351 15 123 4567` y
+`3511234567` son la misma línea y dan la misma clave. Contempla el código de
+país, el `9` internacional, el `0` de larga distancia y el `15` de celular —que
+va en el medio, después del código de área, y es lo que hace que comparar por los
+últimos dígitos no alcance.
+
+El bot no tiene que normalizar nada: manda el número tal como se lo dio Telegram.
+
+### Tablas y funciones
+
+| | |
+|---|---|
+| `invitaciones` | Códigos de un solo uso, con teléfono o email. Solo las ve un administrador de esa organización |
+| `vinculos_telegram` | Qué usuario hay detrás de cada chat. **No se expone por PostgREST**: solo `service_role` |
+| `registrar_organizacion(nombre, telefono, email?, cuit?, zona?)` | Alta completa. Solo `service_role` |
+| `crear_invitacion(org, rol?, telefono?, email?, dias?)` | Invita. Por defecto `administrador`. Solo el servidor puede emitir `propietario` |
+| `canjear_por_telefono(tel, usuario, tg_id, chat, nombre?)` | El alta por botón. Solo `service_role` |
+| `canjear_invitacion(codigo, usuario, tg_id, chat, nombre?)` | El alta por código. Solo `service_role` |
+| `contexto_telegram(tg_id)` | Quién es, sobre qué organización opera y a cuáles pertenece |
+| `cambiar_organizacion_activa(tg_id, org)` | Verifica la membresía; no confía en el bot |
+| `desvincular_telegram(tg_id)` | Suelta el chat. **No quita la membresía**: para echar a alguien se borra su fila de `miembros` |
 
 Recordar: desde la migración `0011`, **una función nueva nace sin permisos**. Si
 el bot tiene que llamarla, hay que escribir el `GRANT` explícito.
@@ -84,9 +120,11 @@ deprecación. Conviene no depender de eso.
 
 Dos caminos sostenidos por la API oficial:
 
-**a) Guardar el refresh token (menos llamadas).** Al vincular, se crea la sesión
-una vez y se guarda el `refresh_token` en `vinculos_telegram`. Después, por cada
-interacción:
+**a) Guardar el refresh token (menos llamadas).** Al vincular se crea la sesión
+una vez y se guarda el `refresh_token`. La tabla `vinculos_telegram` **no tiene
+esa columna a propósito**: guardar una credencial de larga duración que todavía
+no se usa es todo desventaja. Si se elige este camino, es un `ALTER TABLE`.
+Después, por cada interacción:
 
 ```
 POST /auth/v1/token?grant_type=refresh_token
@@ -171,15 +209,20 @@ No hace falta filtrar por organización: RLS ya lo hace.
 | `estado_tarea_diaria` | — | jsonb: si el cron está programado y cómo le fue |
 | `hoy_en_organizacion` | `p_organizacion_id: uuid` | date |
 | `organizaciones_del_usuario` | — | uuids del usuario autenticado |
+| `crear_invitacion` | `p_organizacion_id: uuid`, `p_rol`, `p_telefono: text`, `p_email: text`, `p_dias_validez: integer` | jsonb con el código y su vencimiento |
 
 `p_agrupar_por` acepta `tipo`, `vehiculo`, `flota` o `mes`. Cualquier otro valor
 devuelve error, a propósito.
 
 ### Lo que el bot NO puede llamar
 
-`tarea_diaria`, `recalcular_resumen_flota` y `estado_segun_pagos` están reservadas
-para `service_role` y conexiones directas. Si el bot las necesita, es señal de que
-algo se está haciendo en el lugar equivocado.
+Con el JWT de un usuario no se pueden llamar: `tarea_diaria`,
+`recalcular_resumen_flota` ni `estado_segun_pagos`.
+
+Y con `service_role` (nunca con el del usuario): `registrar_organizacion`,
+`canjear_por_telefono`, `canjear_invitacion`, `contexto_telegram`,
+`cambiar_organizacion_activa` y `desvincular_telegram`. Son las del alta, y por
+eso viven del lado del servidor.
 
 ---
 
@@ -190,7 +233,8 @@ siguen funcionando si el LLM falla o se acaba la cuota.
 
 | Comando | Qué hace |
 |---|---|
-| `/start <codigo>` | Canjea el código de invitación y vincula el chat |
+| `/start` | Pide el número con un botón `request_contact` y vincula el chat |
+| `/start <codigo>` | Alternativa por código, para un enlace `t.me/<bot>?start=<codigo>` |
 | `/flota` | Resumen de todas las flotas (lee `resumenes_flota`) |
 | `/flota <nombre>` | `resumen_flota()` de una en particular |
 | `/vehiculo <dominio>` | `detalle_vehiculo()` |
