@@ -27,21 +27,21 @@ export function extraerDominio(texto: string): string | null {
   return null;
 }
 
-const COMANDOS_FLOTA = ['flota', 'mis vehiculos', 'mis vehículos', 'mis autos', 'mis dominios'];
-
 function sinAcentos(valor: string): string {
   return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-export function esComandoFlota(texto: string): boolean {
-  const normalizado = texto.trim().toLowerCase();
-  return COMANDOS_FLOTA.includes(normalizado);
-}
+// Las intenciones se detectan por palabras clave, no por frase exacta: la
+// gente escribe "quiero pagar la municipal" o "mostrame mi flota", no comandos.
+const PALABRAS_FLOTA = /\b(flota|mis (vehiculos|autos|dominios|patentes|camiones))\b/;
+const PALABRAS_LINK_PAGO = /\b(link|links|enlace|pagar|pago|pagos|boleta|abonar)\b/;
 
-const COMANDOS_LINK_PAGO = ['link de pago', 'pagar', 'pagar muni', 'link'];
+/** Insensible a mayusculas y acentos: "Flóta", "FLOTA" y "flota" matchean igual. */
+export function esComandoFlota(texto: string): boolean {
+  return PALABRAS_FLOTA.test(sinAcentos(texto.trim().toLowerCase()));
+}
 
 /** Insensible a mayusculas y acentos: "Pagár", "PAGAR" y "pagar" matchean igual. */
 export function esComandoLinkPago(texto: string): boolean {
-  const normalizado = sinAcentos(texto.trim().toLowerCase());
-  return COMANDOS_LINK_PAGO.includes(normalizado);
+  return PALABRAS_LINK_PAGO.test(sinAcentos(texto.trim().toLowerCase()));
 }

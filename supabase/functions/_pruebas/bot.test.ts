@@ -1,6 +1,6 @@
 import { assertEquals, assertExists } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import { clasificarEvento, interpretarTexto, secretoValido, telefonoDesdeChatId, mensajeFlota, mensajeLinkPago } from '../_compartido/bot/webhook.ts';
-import { extraerDominio, esComandoFlota } from '../_compartido/bot/dominio.ts';
+import { extraerDominio, esComandoFlota, esComandoLinkPago } from '../_compartido/bot/dominio.ts';
 import { normalizarMuni } from '../_compartido/bot/fuentes/muni.ts';
 import { normalizarPeaje } from '../_compartido/bot/fuentes/peaje.ts';
 import { rentasCba, itv } from '../_compartido/bot/fuentes/estaticas.ts';
@@ -203,4 +203,12 @@ Deno.test('clasificarEvento conserva el LID cuando el remitente no viene como te
     payload: { id: 'msg2', from: '254133282013304@lid', fromMe: false, body: 'AH827BR' },
   });
   assertEquals(r, { tipo: 'procesar', idMensaje: 'msg2', telefono: null, lid: '254133282013304@lid', texto: 'AH827BR' });
+});
+
+Deno.test('las intenciones de pago y flota se detectan por palabras clave en frases naturales', () => {
+  assertEquals(esComandoLinkPago('quiero pagar la municipalidad'), true);
+  assertEquals(esComandoLinkPago('Pasame el LINK de pago'), true);
+  assertEquals(esComandoLinkPago('cuánto debo'), false);
+  assertEquals(esComandoFlota('mostrame mi flota'), true);
+  assertEquals(esComandoFlota('AH827BR'), false);
 });
