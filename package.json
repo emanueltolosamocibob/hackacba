@@ -13,10 +13,13 @@
     "verificar": "node --env-file=.env supabase/tests/verificar.mjs",
     "verificar:realtime": "node --env-file=.env supabase/tests/verificar-realtime.mjs",
     "verificar:tipos": "tsc --noEmit --project paquetes/compartido/tsconfig.json",
-    "verificar:todo": "npm run verificar && npm run verificar:alta && npm run verificar:realtime && npm run verificar:tipos",
+    "verificar:todo": "npm run verificar && npm run verificar:alta && npm run verificar:bot && npm run verificar:realtime && npm run verificar:tipos",
     "demo": "node --env-file=.env supabase/semillas/demo.mjs",
     "verificar:alta": "node --env-file=.env supabase/tests/verificar-alta.mjs",
-    "estado": "node --env-file=.env herramientas/estado.mjs"
+    "verificar:bot": "node --env-file=.env supabase/tests/verificar-bot.mjs",
+    "estado": "node --env-file=.env herramientas/estado.mjs",
+    "bot:desplegar": "supabase functions deploy telegram agente despachar-avisos",
+    "bot:tipos": "deno check supabase/functions/telegram/index.ts supabase/functions/agente/index.ts supabase/functions/despachar-avisos/index.ts"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.116.0",

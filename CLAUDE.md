@@ -4,12 +4,12 @@ Control de las obligaciones de pago de cada vehículo de una o más flotas:
 impuesto automotor de Rentas Córdoba, tasa municipal, seguro, VTV, GNC, multas.
 El problema no es contabilidad, es **no perder un vencimiento**.
 
-**Estado: el backend está terminado y verificado. No hay interfaz todavía.**
-La próxima etapa es un bot de Telegram; más adelante, una Mini App en React + TS.
+**Estado: el backend está terminado y verificado. El bot de Telegram está
+construido y falta desplegarlo.** Más adelante, una Mini App en React + TS.
 
 - [README.md](README.md) — modelo de datos y puesta en marcha
-- [BOT.md](BOT.md) — la guía para construir el bot: superficie de la API, alta
-  de usuarios, despacho de avisos
+- [BOT.md](BOT.md) — el bot: superficie de la API, alta de usuarios, despacho
+  de avisos y la puesta en marcha
 
 ---
 
@@ -68,6 +68,19 @@ tareas de sistema: cron, despacho de avisos y el alta de usuarios.
 el medio, después del código de área: comparar por los últimos dígitos no
 alcanza. Usar `clave_telefono()`, no reimplementarlo. Ver la migración `0015`.
 
+**9. El webhook de Telegram corre con `verify_jwt = false`.** Telegram no tiene
+un JWT de Supabase; con la verificación puesta, ningún update llegaría al
+código. Lo que lo protege es la cabecera `X-Telegram-Bot-Api-Secret-Token`, que
+se compara en la primera línea de la función. Si esa comparación se cae, la URL
+queda abierta.
+
+**10. Las Edge Functions son isolates efímeros y hay más de uno.** El callback
+de un botón llega en otra invocación que casi seguro corre en otro isolate: un
+`Map` en memoria no lo ve. Por eso las confirmaciones de escritura y la memoria
+de la conversación viven en tablas (migración `0016`) y no en el proceso. El
+único estado en memoria es el cache del JWT, y ahí perderlo solo cuesta dos
+llamadas de más.
+
 ---
 
 ## Comandos
@@ -78,14 +91,16 @@ npm run db:estado        # ver qué migraciones están aplicadas
 npm run db:tipos         # regenerar paquetes/compartido/src/tipos.ts
 npm run demo             # datos de demostración (--recrear para rehacerlos)
 npm run estado           # panel con lo que hay en la base ahora mismo
-npm run verificar:todo   # las tres baterías + chequeo de tipos
+npm run verificar:todo   # las cuatro baterías + chequeo de tipos
+npm run bot:desplegar    # publicar las tres Edge Functions
+npm run bot:tipos        # deno check de las funciones (necesita Deno instalado)
 ```
 
 `.env` (gitignored) tiene `SUPABASE_URL`, `SUPABASE_ANON_KEY` y
 `SUPABASE_SERVICE_ROLE_KEY`. No commitearlo ni imprimirlo.
 
 **Antes de dar por terminado cualquier cambio que toque la base, correr
-`npm run verificar:todo`.** Son 122 comprobaciones y ya cazaron cuatro bugs
+`npm run verificar:todo`.** Son 152 comprobaciones y ya cazaron cuatro bugs
 reales; si una falla, es información, no ruido.
 
 Al agregar una migración, sumar su verificación al script que corresponda en
@@ -96,15 +111,18 @@ Al agregar una migración, sumar su verificación al script que corresponda en
 ## Cómo está organizado
 
 ```
-supabase/migrations/   0001-0015, en orden. El encabezado de cada una explica
+supabase/migrations/   0001-0016, en orden. El encabezado de cada una explica
                        por qué existe; las 0007+ documentan el bug que corrigen
 supabase/tests/        verificar.mjs (66) · verificar-alta.mjs (50)
-                       verificar-realtime.mjs (6)
+                       verificar-bot.mjs (30) · verificar-realtime.mjs (6)
 supabase/semillas/     demo.mjs — flota realista de Córdoba
+supabase/functions/    el bot: telegram (webhook), agente (tool calling con
+                       Claude), despachar-avisos, y _compartido/
 herramientas/          estado.mjs — panel de lo que hay en la base
 paquetes/compartido/   tipos generados del esquema + esquemas zod + helpers
 ```
 
-No hay `supabase/functions/`: **no hay Edge Functions y es a propósito**. Toda la
-lógica se expresa en Postgres y `pg_cron` llama a `tarea_diaria()` sin
-intermediarios. La primera va a ser el webhook de Telegram.
+**La lógica de negocio sigue viviendo en Postgres, no en las funciones.** Las
+Edge Functions conversan y despachan: `pg_cron` llama a `tarea_diaria()` sin
+intermediarios y el bot solo reparte lo que quedó encolado. Si aparece una
+regla de negocio nueva, casi siempre va en una migración.

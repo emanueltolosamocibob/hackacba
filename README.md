@@ -125,6 +125,12 @@ npm run verificar:todo
   derivado, pagos parciales y su reversión, rollups, reportes, link de pago,
   baja de vehículo, avisos, importación masiva, comprobantes en Storage y la
   superficie de permisos de las funciones (que lo interno siga siendo interno).
+- `verificar:alta` — 50 comprobaciones del alta de usuarios: invitaciones, canje
+  por teléfono verificado y por código, y quién puede hacer qué.
+- `verificar:bot` — 30 comprobaciones del estado del bot: que nada de eso se vea
+  con un JWT de usuario, que una confirmación de escritura sea de un solo uso y
+  de una sola persona, y que `avisos_pendientes()` resuelva el vencimiento y los
+  destinatarios que el despachador da por hecho.
 - `verificar:realtime` — 6 comprobaciones del camino completo: cambio en la
   base → trigger → rollup → `realtime.send()` → suscriptor autorizado (y el no
   autorizado rechazado).
@@ -168,16 +174,24 @@ La tarea **encola** en `avisos`; el despacho lo hará la interfaz. Una fila con
 
 **El sistema nunca mueve dinero.** Acerca el link; el pago lo hace una persona.
 
+## El bot
+
+El bot de Telegram está escrito, en `supabase/functions/`: el webhook con los
+comandos y el alta, el agente conversacional con Claude, y el despachador de la
+cola de avisos.
+
+**Falta desplegarlo.** Los cuatro pasos —migración, secretos, deploy y
+`setWebhook`— están en **[BOT.md](BOT.md)**, junto con el reparto de
+responsabilidades, cómo un chat obtiene un JWT y las firmas exactas de la API.
+
+La lógica de negocio sigue en Postgres: las funciones conversan y despachan.
+`pg_cron` llama a `tarea_diaria()` sin intermediarios.
+
 ## Pendiente
 
-Solo la interfaz: bot de Telegram con agente conversacional, y más adelante una
-Mini App en React + TypeScript. `paquetes/compartido` ya está listo para las
-dos, con tipos generados del esquema real y esquemas zod de validación.
+La Mini App en React + TypeScript. `paquetes/compartido` ya está listo —tipos
+generados del esquema real y esquemas zod—, y el bot lo consume, así que la
+Mini App arranca sobre lo mismo.
 
-**Para construir el bot: [BOT.md](BOT.md)** — el reparto de responsabilidades,
-cómo un chat de Telegram obtiene un JWT, las firmas exactas de la API, el
-despacho de la cola de avisos y lo que todavía falta en la base.
-
-**No hay Edge Functions todavía, y es a propósito**: hasta acá toda la lógica se
-expresa en Postgres, y `pg_cron` llama a `tarea_diaria()` sin intermediarios.
-La primera Edge Function va a ser el webhook de Telegram.
+Del lado del bot: no hay tests de las Edge Functions, solo de la base contra la
+que corren. Es lo primero que conviene sumar si esto crece.

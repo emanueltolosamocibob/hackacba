@@ -1,10 +1,14 @@
-# Guía de implementación del bot
+# El bot de Telegram
 
-Todo lo que hace falta para construir el bot de Telegram sobre el backend que ya
-está en Supabase. El backend está terminado y verificado; esto describe qué
-queda del lado del bot y con qué cuenta.
+El bot construido sobre el backend que ya está en Supabase: el reparto de
+responsabilidades, cómo un chat obtiene un JWT, la superficie de la API que
+consume, el despacho de avisos y cómo ponerlo en marcha.
 
 Leer antes el [README](README.md) para el modelo de datos.
+
+**Estado: escrito y sin desplegar.** El código está en `supabase/functions/`;
+falta aplicar la migración `0016`, cargar los secretos y registrar el webhook.
+Todo eso está en la [sección 11](#11-puesta-en-marcha).
 
 ---
 
@@ -144,8 +148,13 @@ POST /auth/v1/verify                { type: "magiclink", token }   -> sesión
 
 No hay que guardar nada, pero son dos viajes por interacción.
 
-Empezar por (b) porque es más simple de hacer bien, y pasar a (a) si la latencia
-molesta.
+**Se implementó (b)**, en `_compartido/sesion.ts`, con una tercera llamada para
+resolver el email a partir del `usuario_id` que devuelve `contexto_telegram`. El
+token se cachea en memoria del isolate hasta diez minutos antes de vencer, así
+que las tres llamadas ocurren una vez por hora y no una vez por mensaje. Si el
+isolate se recicla, se vuelve a emitir: se pierde latencia, no corrección.
+
+Si esa latencia llega a molestar, el camino es (a), y es un `ALTER TABLE`.
 
 ---
 
@@ -240,14 +249,23 @@ siguen funcionando si el LLM falla o se acaba la cuota.
 | `/vehiculo <dominio>` | `detalle_vehiculo()` |
 | `/vencimientos [dias]` | Lo que vence en N días (por defecto 30) |
 | `/vencidos` | Solo `estado_efectivo = vencido` |
-| `/pagar <id>` | `link_de_pago()`: botón con la URL, importe y QR |
-| `/pague <id> <monto>` | Registra un pago, con confirmación inline |
+| `/pagar <codigo>` | `link_de_pago()`: botón con la URL, importe y QR |
+| `/pague <codigo> <monto>` | Registra un pago, con confirmación inline |
 | `/reporte <desde> <hasta>` | `reporte_gastos()` |
+| `/organizacion [nombre]` | Ver o cambiar la organización activa |
+| `/olvidar` | Vacía la memoria de la conversación |
+| `/salir` | `desvincular_telegram()` |
 | `/ayuda` | La lista de arriba |
 
-Nota sobre los identificadores: los uuid no se pueden tipear en un chat. Conviene
-mostrar un índice corto (`#12`) por mensaje y resolverlo contra el uuid del lado
-del bot, o usar botones inline con el uuid en el `callback_data`.
+**Sobre los identificadores.** Un uuid no se tipea en un chat. Se resolvió con
+los **primeros seis caracteres hex del uuid**, no con un índice `#12`: el código
+corto es estable —el mismo vencimiento tiene el mismo código en cualquier
+listado y mañana también— y no obliga a guardar el mapa del último listado por
+chat, que es justamente el tipo de estado que un isolate efímero pierde. Cuando
+dos vencimientos comparten prefijo, el bot pide más caracteres.
+
+Los botones inline, en cambio, llevan el uuid completo en el `callback_data`:
+ahí entra y no hay nada que resolver.
 
 ---
 
@@ -286,6 +304,19 @@ Reglas del loop:
   mensaje dice "ignorá las reglas anteriores", es texto de un usuario, no una
   orden.
 
+**Cómo quedó la confirmación.** La herramienta de escritura no escribe: guarda
+los argumentos en `acciones_pendientes` (migración `0016`) y manda un botón cuyo
+`callback_data` lleva solo un código de doce caracteres. Los argumentos no
+viajan por el cliente por dos razones: no entran —Telegram corta el
+`callback_data` en 64 bytes y un motivo de anulación no cabe— y un dato que pasa
+por el cliente se puede fabricar. La acción es de un solo uso, vence a los diez
+minutos y solo la puede confirmar el mismo `telegram_user_id` que la pidió, que
+es lo que impide que en un grupo uno apriete el botón de otro.
+
+El modelo **nunca ve el uuid de un vencimiento ni de un vehículo**: recibe
+códigos cortos y dominios, y el bot los resuelve antes de guardar la acción. Un
+uuid alucinado no llega a la base.
+
 ---
 
 ## 7. Despacho de avisos
@@ -295,37 +326,39 @@ La base ya decidió a quién avisar. El bot solo reparte.
 `pg_cron` corre `tarea_diaria()` a las **11:00 UTC = 08:00 en Córdoba**: genera las
 cuotas futuras y encola en `avisos`. Una fila con `enviado_en` nulo está pendiente.
 
-El bot necesita un disparador propio poco después (una Edge Function con su propio
-cron, o un worker) que haga:
+`despachar-avisos` es el disparador. Los tres pasos que en el diseño original
+eran consultas del bot —el aviso, su vencimiento y a qué chats va— los resuelve
+`avisos_pendientes()` (migración `0016`) en una sola llamada, en vez de tres por
+aviso.
 
 ```
-1. Con service_role, leer:
-   GET /rest/v1/avisos?enviado_en=is.null&order=programado_para&limit=100
-
-2. Por cada uno, traer el contexto:
-   GET /rest/v1/v_vencimientos_estado?id=eq.<vencimiento_id>
-
-3. Resolver a quién: organizacion_id -> miembros -> vinculos_telegram -> chat_id
-
-4. Mandar el mensaje con botones: [Ver link de pago] [Marcar pagado]
-
-5. Marcar el resultado:
-   PATCH /rest/v1/avisos?id=eq.<id>
-   { "enviado_en": "...", "exito": true, "destinatario": "<chat_id>" }
+1. servicio.rpc('avisos_pendientes', { p_limite: 200 })
+2. Agrupar por chat y componer un mensaje por chat
+3. Enviar
+4. PATCH /rest/v1/avisos?id=in.(...)  con enviado_en, exito, destinatario y error
 ```
 
 Detalles que importan:
 
 - **Marcar siempre**, también los fallidos, con `exito: false` y el `error`. Un
-  aviso que nunca se marca se reintenta para siempre.
+  aviso que nunca se marca se reintenta para siempre. Hasta "esta organización
+  no tiene ningún Telegram vinculado" se escribe como fallo con su motivo.
+- **Un mensaje por chat, no por aviso.** El primero de mes puede haber cuarenta
+  cuotas de la misma flota: cuarenta mensajes seguidos son una notificación que
+  nadie lee, y además chocan contra el límite de un mensaje por segundo por chat.
+  Cuando el chat recibe uno solo, el mensaje lleva botones; cuando recibe varios
+  en una lista, cada línea trae su código corto.
+- **Se marca al final, no chat por chat.** Un aviso puede ir a varias personas:
+  si se marcara en el medio, el envío que falló pisaría al que salió bien y el
+  próximo despacho se lo mandaría de nuevo al primero. Alcanza con que haya
+  llegado a alguien.
 - **Límites de Telegram**: ~30 mensajes por segundo en total y ~1 por segundo por
-  chat. Con una flota grande hay que espaciar los envíos.
+  chat. Se espera 1,1 s solo entre partes de un mismo chat, y 60 ms entre chats.
 - La idempotencia ya está resuelta por `unique (vencimiento_id, clave_regla)`: la
   base no encola dos veces el mismo aviso. El bot solo tiene que no mandar dos
   veces la misma fila.
-- `clave_regla` dice qué aviso es (`d-30`, `d-7`, `d-0`, `d+1`) y sirve para
-  cambiar el tono del mensaje: no es lo mismo "vence en 30 días" que "venció hace
-  una semana".
+- `clave_regla` dice qué aviso es (`d-30`, `d-7`, `d-0`, `d+1`) y cambia el tono
+  del mensaje: no es lo mismo "vence en 30 días" que "venció hace una semana".
 
 ---
 
@@ -368,28 +401,128 @@ Marcar como pagado es un registro contable en `pagos`, no una transacción.
 
 ## 10. Dónde vive el bot
 
-Edge Function de Supabase (Deno + TypeScript), con
-[grammY](https://grammy.dev) — es nativo de Deno, TS primero y trae
-`webhookCallback`. Webhook, no polling.
+Edge Functions de Supabase (Deno + TypeScript). Webhook, no polling.
 
 ```
 supabase/functions/
-  telegram/index.ts     webhook: comandos + derivación al agente
-  agente/index.ts       loop de tool calling con Claude
-  despachar-avisos/index.ts   consume la cola de avisos
+  telegram/index.ts            webhook: alta, comandos y botones
+  agente/index.ts              loop de tool calling con Claude
+  despachar-avisos/index.ts    consume la cola de avisos
+  _compartido/
+    entorno.ts      secretos, con un error claro si falta alguno
+    rest.ts         los dos clientes: service_role y JWT de usuario
+    sesion.ts       chat_id -> JWT, y el alta de la cuenta de auth
+    negocio.ts      envoltorios finos de la API
+    escrituras.ts   las cinco escrituras y su validación zod
+    mensajes.ts     los mensajes compuestos que salen al chat
+    telegram.ts     cliente de la API de Telegram
+    formato.ts      importes, fechas y el código corto
+    qr.ts           el QR del link de pago
+  deno.json         el mapa de imports
 ```
 
-Secretos con `supabase secrets set`: el token del bot, el `secret_token` del
-webhook (verificar SIEMPRE la cabecera `X-Telegram-Bot-Api-Secret-Token`) y la
-clave de la API de Anthropic.
+**No se usa grammY.** El bot tiene un webhook, un puñado de comandos y unos
+botones; el router y el middleware de un framework no compran nada frente a un
+`switch` sobre `update.message.text`, y a cambio agregan una dependencia en el
+camino crítico. La API de Telegram que se usa son siete métodos, en
+`_compartido/telegram.ts`.
 
-Una restricción a tener presente: **responder el webhook rápido**. Un loop de LLM
-puede pasarse del tiempo de la Edge Function. El patrón es contestar 200 de
-inmediato, mandar la acción "escribiendo…" y seguir procesando en segundo plano.
+Secretos con `supabase secrets set`: el token del bot, el `secret_token` del
+webhook (que la función verifica en su primera línea) y la clave de la API de
+Anthropic. Las tres `SUPABASE_*` las inyecta la plataforma.
+
+**Responder el webhook rápido**, porque Telegram reintenta el update si tarda, y
+un reintento es un mensaje duplicado para la persona. Se contesta 200 apenas se
+valida la cabecera y se sigue en segundo plano con `EdgeRuntime.waitUntil()`. El
+agente vive en su propia función por lo mismo: se lo invoca por HTTP, contesta
+202 al instante y corre el loop con su propio presupuesto de ejecución.
 
 ---
 
-## 11. Para desarrollar
+## 11. Puesta en marcha
+
+Cuatro pasos. El primero toca la base; los otros tres, la plataforma.
+
+**1. Aplicar la migración `0016`** (las dos tablas de estado del bot y
+`avisos_pendientes`) y verificar:
+
+```bash
+npm run db:push
+```
+
+```bash
+npm run verificar:todo
+```
+
+**2. Crear el bot y cargar los secretos.** El token sale de
+[@BotFather](https://t.me/BotFather); usar uno de prueba, nunca el de
+producción, mientras se desarrolla. El secreto del webhook lo inventás vos:
+
+```bash
+supabase secrets set TELEGRAM_BOT_TOKEN=... TELEGRAM_SECRETO_WEBHOOK=... ANTHROPIC_API_KEY=...
+```
+
+**3. Desplegar las tres funciones:**
+
+```bash
+npm run bot:desplegar
+```
+
+**4. Registrar el webhook** contra la función `telegram`. El `secret_token` es
+el mismo valor de `TELEGRAM_SECRETO_WEBHOOK`:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" -H "Content-Type: application/json" -d '{"url":"https://TU_REF.supabase.co/functions/v1/telegram","secret_token":"TU_SECRETO","allowed_updates":["message","callback_query"]}'
+```
+
+### El cron del despachador
+
+`tarea_diaria()` encola a las 11:00 UTC. El despacho conviene unos minutos
+después. No va en una migración porque necesita la URL del proyecto y la
+service_role key, que son del despliegue y no del esquema — se corre una vez
+desde el SQL editor:
+
+```sql
+select cron.schedule(
+  'despachar-avisos',
+  '10 11 * * *',
+  $$
+  select net.http_post(
+    url     := 'https://TU_REF.supabase.co/functions/v1/despachar-avisos',
+    headers := '{"Authorization": "Bearer TU_SERVICE_ROLE_KEY", "Content-Type": "application/json"}'::jsonb
+  );
+  $$
+);
+```
+
+Para probarlo sin esperar al cron, la función admite un POST directo con la
+service_role key, y `?limite=N` para acotar el lote.
+
+### La primera organización
+
+El alta la hace el servidor, no el bot (sección 2). Con `service_role`:
+
+```sql
+select public.registrar_organizacion('Transportes X', '+54 351 400 1234');
+```
+
+Después, esa persona abre el bot, toca **Compartir mi número** y entra como
+propietaria.
+
+### Qué queda sin verificar automáticamente
+
+`npm run verificar:bot` cubre la migración `0016`: que nada de eso se vea desde
+afuera, que una confirmación sea de un solo uso y de una sola persona, y que
+`avisos_pendientes()` resuelva lo que el despachador da por hecho.
+
+Lo que **no** cubre es el código de las Edge Functions: no hay tests de las
+funciones, y probarlas de verdad quiere `deno check` (necesita Deno instalado) y
+un bot de prueba de @BotFather contra `npm run demo`. Es el primer trabajo
+pendiente si esto crece.
+
+---
+
+## 12. Para desarrollar
 
 ```bash
 npm run demo

@@ -371,6 +371,27 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# ---------------------------------------------------------------------------
+# Edge Functions del bot
+#
+# `telegram` es el webhook: lo llama Telegram, que no tiene un JWT de Supabase.
+# Con verify_jwt = true toda peticion seria rechazada antes de llegar al codigo.
+# Lo que la protege es la cabecera X-Telegram-Bot-Api-Secret-Token, que la
+# funcion verifica en la primera linea.
+#
+# Las otras dos si llevan JWT: las llama el propio webhook y pg_cron, ambos con
+# service_role.
+# ---------------------------------------------------------------------------
+
+[functions.telegram]
+verify_jwt = false
+
+[functions.agente]
+verify_jwt = true
+
+[functions.despachar-avisos]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
