@@ -177,6 +177,65 @@ export type Database = {
           },
         ]
       }
+      invitaciones: {
+        Row: {
+          actualizado_en: string
+          anulada: boolean
+          codigo: string
+          creada_por: string | null
+          creado_en: string
+          email: string | null
+          expira_en: string
+          id: string
+          organizacion_id: string
+          rol: Database["public"]["Enums"]["rol_miembro"]
+          telefono: string | null
+          telefono_clave: string | null
+          usada_en: string | null
+          usada_por: string | null
+        }
+        Insert: {
+          actualizado_en?: string
+          anulada?: boolean
+          codigo: string
+          creada_por?: string | null
+          creado_en?: string
+          email?: string | null
+          expira_en: string
+          id?: string
+          organizacion_id: string
+          rol?: Database["public"]["Enums"]["rol_miembro"]
+          telefono?: string | null
+          telefono_clave?: string | null
+          usada_en?: string | null
+          usada_por?: string | null
+        }
+        Update: {
+          actualizado_en?: string
+          anulada?: boolean
+          codigo?: string
+          creada_por?: string | null
+          creado_en?: string
+          email?: string | null
+          expira_en?: string
+          id?: string
+          organizacion_id?: string
+          rol?: Database["public"]["Enums"]["rol_miembro"]
+          telefono?: string | null
+          telefono_clave?: string | null
+          usada_en?: string | null
+          usada_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitaciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       miembros: {
         Row: {
           actualizado_en: string
@@ -709,6 +768,56 @@ export type Database = {
           },
         ]
       }
+      vinculos_chat: {
+        Row: {
+          canal: Database["public"]["Enums"]["canal_chat"]
+          id: string
+          identificador_externo: string
+          jid_crudo: string | null
+          nombre_mostrado: string | null
+          organizacion_activa_id: string | null
+          telefono: string | null
+          telefono_clave: string | null
+          ultimo_uso_en: string | null
+          usuario_id: string
+          vinculado_en: string
+        }
+        Insert: {
+          canal: Database["public"]["Enums"]["canal_chat"]
+          id?: string
+          identificador_externo: string
+          jid_crudo?: string | null
+          nombre_mostrado?: string | null
+          organizacion_activa_id?: string | null
+          telefono?: string | null
+          telefono_clave?: string | null
+          ultimo_uso_en?: string | null
+          usuario_id: string
+          vinculado_en?: string
+        }
+        Update: {
+          canal?: Database["public"]["Enums"]["canal_chat"]
+          id?: string
+          identificador_externo?: string
+          jid_crudo?: string | null
+          nombre_mostrado?: string | null
+          organizacion_activa_id?: string | null
+          telefono?: string | null
+          telefono_clave?: string | null
+          ultimo_uso_en?: string | null
+          usuario_id?: string
+          vinculado_en?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vinculos_chat_organizacion_activa_id_fkey"
+            columns: ["organizacion_activa_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_vencimientos_estado: {
@@ -771,8 +880,73 @@ export type Database = {
       }
     }
     Functions: {
+      aplicar_invitacion: {
+        Args: {
+          p_canal: Database["public"]["Enums"]["canal_chat"]
+          p_identificador_externo: string
+          p_invitacion_id: string
+          p_nombre_mostrado: string
+          p_telefono_verificado: string
+          p_usuario_id: string
+        }
+        Returns: Json
+      }
+      cambiar_organizacion_activa: {
+        Args: {
+          p_canal: Database["public"]["Enums"]["canal_chat"]
+          p_identificador_externo: string
+          p_organizacion_id: string
+        }
+        Returns: Json
+      }
+      canjear_invitacion: {
+        Args: {
+          p_canal: Database["public"]["Enums"]["canal_chat"]
+          p_codigo: string
+          p_identificador_externo: string
+          p_nombre_mostrado?: string
+          p_usuario_id: string
+        }
+        Returns: Json
+      }
+      canjear_por_telefono: {
+        Args: {
+          p_canal: Database["public"]["Enums"]["canal_chat"]
+          p_identificador_externo: string
+          p_nombre_mostrado?: string
+          p_telefono_verificado: string
+          p_usuario_id: string
+        }
+        Returns: Json
+      }
+      clave_telefono: { Args: { p_telefono: string }; Returns: string }
+      contexto_chat: {
+        Args: {
+          p_canal: Database["public"]["Enums"]["canal_chat"]
+          p_identificador_externo: string
+        }
+        Returns: Json
+      }
+      crear_invitacion: {
+        Args: {
+          p_dias_validez?: number
+          p_email?: string
+          p_organizacion_id: string
+          p_rol?: Database["public"]["Enums"]["rol_miembro"]
+          p_telefono?: string
+        }
+        Returns: Json
+      }
+      desvincular_chat: {
+        Args: {
+          p_canal: Database["public"]["Enums"]["canal_chat"]
+          p_identificador_externo: string
+        }
+        Returns: boolean
+      }
       detalle_vehiculo: { Args: { p_vehiculo_id: string }; Returns: Json }
       es_miembro: { Args: { p_organizacion_id: string }; Returns: boolean }
+      es_tarea_de_sistema: { Args: never; Returns: boolean }
       estado_segun_pagos: {
         Args: {
           p_estado_actual: Database["public"]["Enums"]["estado_vencimiento"]
@@ -786,6 +960,7 @@ export type Database = {
         Args: { p_anio: number; p_dia: number; p_mes: number }
         Returns: string
       }
+      generar_codigo_invitacion: { Args: never; Returns: string }
       generar_vencimientos: {
         Args: { p_horizonte_meses?: number; p_regla_id: string }
         Returns: number
@@ -807,6 +982,7 @@ export type Database = {
         Args: { p_frecuencia: Database["public"]["Enums"]["frecuencia"] }
         Returns: number
       }
+      normalizar_telefono: { Args: { p_telefono: string }; Returns: string }
       organizaciones_del_usuario: { Args: never; Returns: string[] }
       programar_avisos: {
         Args: { p_organizacion_id: string; p_ventana_dias?: number }
@@ -820,6 +996,17 @@ export type Database = {
       recalcular_resumen_flota: {
         Args: { p_flota_id: string }
         Returns: undefined
+      }
+      registrar_organizacion: {
+        Args: {
+          p_cuit?: string
+          p_email_admin?: string
+          p_nombre: string
+          p_nombre_flota?: string
+          p_telefono_admin: string
+          p_zona_horaria?: string
+        }
+        Returns: Json
       }
       reporte_gastos: {
         Args: {
@@ -851,6 +1038,7 @@ export type Database = {
     }
     Enums: {
       accion_auditoria: "alta" | "modificacion" | "baja"
+      canal_chat: "whatsapp"
       estado_efectivo:
         | "pendiente"
         | "parcial"
@@ -1023,6 +1211,7 @@ export const Constants = {
   public: {
     Enums: {
       accion_auditoria: ["alta", "modificacion", "baja"],
+      canal_chat: ["whatsapp"],
       estado_efectivo: [
         "pendiente",
         "parcial",
