@@ -29,7 +29,7 @@ const MENSAJE_BIENVENIDA = [
   '• Caminos de las Sierras: infracciones de peaje',
   '• Rentas Córdoba e ITV: te dejo el acceso oficial',
   '',
-  'Para empezar, mandame una patente. Por ejemplo: *AH827BR*',
+  'Para empezar, mandame una patente. Por ejemplo: *AA000AA*',
   'Después podés escribir *link de pago* para pagar, o *flota* para ver tus vehículos.',
 ].join('\n');
 

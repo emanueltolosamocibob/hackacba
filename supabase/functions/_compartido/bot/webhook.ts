@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { timingSafeEqual } from 'https://deno.land/std@0.224.0/crypto/timing_safe_equal.ts';
-import { extraerDominio, esComandoFlota, esComandoLinkPago } from './dominio.ts';
+import { extraerDominio, esComandoFlota, esComandoLinkPago, esConsultaDeudaFlota } from './dominio.ts';
 
 /** Comparacion en tiempo constante del secreto compartido con WAHA (SPEC parr. 10). */
 export function secretoValido(recibido: string | null, esperado: string): boolean {
@@ -79,6 +79,7 @@ export const URL_ALTA = 'https://hackacba.vercel.app/agregar';
 export type Intencion =
   | { accion: 'sin_registrar' }
   | { accion: 'listar_flota' }
+  | { accion: 'deuda_flota' }
   | { accion: 'consultar_dominio'; dominio: string }
   | { accion: 'link_pago' }
   | { accion: 'ayuda' };
@@ -87,6 +88,9 @@ export type Intencion =
 export function interpretarTexto(texto: string, registrado: boolean): Intencion {
   if (!registrado) return { accion: 'sin_registrar' };
   if (esComandoLinkPago(texto)) return { accion: 'link_pago' };
+  // Va antes de listar_flota/consultar_dominio: "deudas de mi flota" tambien
+  // matchea la palabra "flota", y "cuánto debo" no trae ninguna patente.
+  if (esConsultaDeudaFlota(texto)) return { accion: 'deuda_flota' };
   if (esComandoFlota(texto)) return { accion: 'listar_flota' };
   const dominio = extraerDominio(texto);
   if (dominio) return { accion: 'consultar_dominio', dominio };
@@ -108,20 +112,28 @@ export function mensajeFlota(dominios: string[]): string {
   return `Tu flota:\n${dominios.map(d => `• ${d}`).join('\n')}`;
 }
 
-// El portal municipal no acepta la patente por query string (SPEC parr. 2.3):
-// el mensaje siempre la repite en su propia linea para poder copiarla.
+// El portal municipal no acepta la patente por query string (verificado en el
+// navegador: `/automotor?identificador=` carga el campo vacio). Lo que si
+// existe es una pantalla de carga por rubro: `/multas` (elegir "Rodado" y
+// cargar la patente) y `/automotor` (tasa automotor). El mensaje manda esas
+// pantallas, no la raiz, y repite la patente en su propia linea para copiarla.
+export const URL_PAGO_MULTAS_MUNI = 'https://tributariomuni.cordoba.gob.ar/multas';
 export const URL_PAGO_MUNI = 'https://tributariomuni.cordoba.gob.ar/automotor';
-export const URL_PORTAL_MUNI = 'https://tributariomuni.cordoba.gob.ar';
 
 export const MENSAJE_SIN_ULTIMO_DOMINIO =
   'Todavía no tengo una patente tuya para armar el link. Mandame primero la patente (ej: AB123CD).';
 
 export function mensajeLinkPago(dominio: string): string {
   return [
-    'Pagá en el portal municipal:',
+    `Para pagar lo de *${dominio}* en la Municipalidad:`,
+    '',
+    '🅿️ Multas (estacionamiento, tránsito): elegí "Rodado" y pegá la patente',
+    URL_PAGO_MULTAS_MUNI,
+    '',
+    '🚗 Tasa automotor: pegá la patente en "Dominio"',
     URL_PAGO_MUNI,
-    URL_PORTAL_MUNI,
-    'Patente:',
+    '',
+    'Tocá para copiar la patente:',
     dominio,
   ].join('\n');
 }

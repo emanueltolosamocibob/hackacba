@@ -18,12 +18,17 @@ import {
   MENSAJE_SIN_REGISTRAR,
   MENSAJE_SIN_ULTIMO_DOMINIO,
   mensajeFlota,
+  mensajeFlotaVacia,
   mensajeLinkPago,
   secretoValido,
   type EventoWaha,
 } from '../_compartido/bot/webhook.ts';
-import { consultarVehiculo } from '../_compartido/bot/fuentes/consulta.ts';
-import { formatearReporte } from '../_compartido/bot/respuestas.ts';
+import { consultarFlota, consultarVehiculo } from '../_compartido/bot/fuentes/consulta.ts';
+import { formatearReporte, formatearReporteFlota } from '../_compartido/bot/respuestas.ts';
+
+// Tope de patentes que se consultan en un solo mensaje de "deuda de flota":
+// mantiene la corrida dentro de limites razonables de WAHA/Edge Functions.
+const LIMITE_DEUDA_FLOTA = 8;
 
 function requerido(nombre: string): string {
   const valor = Deno.env.get(nombre);
@@ -97,6 +102,22 @@ async function procesarMensaje(telefonoInicial: string | null, lid: string | nul
       const filas = await rpcServicio<FilaDominio[]>('dominios_de_chat', { p_organizacion_id: organizacionId });
       const dominios = (filas ?? []).map(fila => fila.dominio);
       await mensajeria.enviarTexto({ telefonoE164: telefono, texto: mensajeFlota(dominios), senal: AbortSignal.timeout(4000) });
+      return;
+    }
+
+    if (intencion.accion === 'deuda_flota') {
+      const filas = await rpcServicio<FilaDominio[]>('dominios_de_chat', { p_organizacion_id: organizacionId });
+      const dominios = (filas ?? []).map(fila => fila.dominio);
+      if (dominios.length === 0) {
+        await mensajeria.enviarTexto({ telefonoE164: telefono, texto: mensajeFlotaVacia(), senal: AbortSignal.timeout(4000) });
+        return;
+      }
+      const aProcesar = dominios.slice(0, LIMITE_DEUDA_FLOTA);
+      const omitidas = dominios.length - aProcesar.length;
+      const demoSinDeuda = Deno.env.get('DEMO_FUENTES_MOCK') === 'true';
+      const items = await consultarFlota(aProcesar, { demoSinDeuda });
+      const reporte = formatearReporteFlota(items, dominios.length, omitidas);
+      await mensajeria.enviarTexto({ telefonoE164: telefono, texto: reporte, senal: AbortSignal.timeout(20000) });
       return;
     }
 
