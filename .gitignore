@@ -17,3 +17,7 @@ supabase/.temp
 # Capturas de la ronda de inspeccion de impeccable: 2 MB regenerables con
 # `node capturar.mjs`. El surface brief de al lado si se commitea.
 paquetes/web/.impeccable/review/
+
+# WAHA local demo
+infra/waha/.env
+infra/waha/sesiones/

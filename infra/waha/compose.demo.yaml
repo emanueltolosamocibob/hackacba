@@ -1,0 +1,15 @@
+# WAHA for the local demo. One operator-owned WhatsApp session, persisted in ./sesiones.
+# Port is bound to loopback on purpose: external access goes only through the Cloudflare tunnel.
+services:
+  waha:
+    image: devlikeapro/waha:arm-2026.7.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - .env
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: GOWS
+      WHATSAPP_RESTART_ALL_SESSIONS: "true"
+    volumes:
+      - ./sesiones:/app/.sessions
