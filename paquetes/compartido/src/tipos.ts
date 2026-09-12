@@ -139,6 +139,39 @@ export type Database = {
           },
         ]
       }
+      entregas_otp: {
+        Row: {
+          actualizado_en: string
+          codigo_error: string | null
+          creado_en: string
+          estado: Database["public"]["Enums"]["estado_entrega_otp"]
+          id_entrega: string
+          id_proveedor: string | null
+          intentos: number
+          telefono_clave: string
+        }
+        Insert: {
+          actualizado_en?: string
+          codigo_error?: string | null
+          creado_en?: string
+          estado?: Database["public"]["Enums"]["estado_entrega_otp"]
+          id_entrega: string
+          id_proveedor?: string | null
+          intentos?: number
+          telefono_clave: string
+        }
+        Update: {
+          actualizado_en?: string
+          codigo_error?: string | null
+          creado_en?: string
+          estado?: Database["public"]["Enums"]["estado_entrega_otp"]
+          id_entrega?: string
+          id_proveedor?: string | null
+          intentos?: number
+          telefono_clave?: string
+        }
+        Relationships: []
+      }
       flotas: {
         Row: {
           activa: boolean
@@ -235,6 +268,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      invocaciones_funcion: {
+        Row: {
+          creado_en: string
+          funcion: string
+          id: number
+          latencia_ms: number | null
+          resultado: string
+        }
+        Insert: {
+          creado_en?: string
+          funcion: string
+          id?: never
+          latencia_ms?: number | null
+          resultado: string
+        }
+        Update: {
+          creado_en?: string
+          funcion?: string
+          id?: never
+          latencia_ms?: number | null
+          resultado?: string
+        }
+        Relationships: []
       }
       miembros: {
         Row: {
@@ -923,6 +980,15 @@ export type Database = {
         Args: { p_permitir_formato_local?: boolean; p_telefono: string }
         Returns: string
       }
+      cerrar_entrega_otp: {
+        Args: {
+          p_error_codigo?: string
+          p_estado: Database["public"]["Enums"]["estado_entrega_otp"]
+          p_id_entrega: string
+          p_id_proveedor?: string
+        }
+        Returns: boolean
+      }
       clave_telefono: { Args: { p_telefono: string }; Returns: string }
       contexto_chat: {
         Args: {
@@ -964,6 +1030,7 @@ export type Database = {
         Args: { p_anio: number; p_dia: number; p_mes: number }
         Returns: string
       }
+      finalizar_alta_landing: { Args: never; Returns: Json }
       generar_codigo_invitacion: { Args: never; Returns: string }
       generar_vencimientos: {
         Args: { p_horizonte_meses?: number; p_regla_id: string }
@@ -982,6 +1049,7 @@ export type Database = {
         Returns: Json
       }
       link_de_pago: { Args: { p_vencimiento_id: string }; Returns: Json }
+      mantenimiento_alta_whatsapp: { Args: never; Returns: undefined }
       meses_por_frecuencia: {
         Args: { p_frecuencia: Database["public"]["Enums"]["frecuencia"] }
         Returns: number
@@ -1014,6 +1082,10 @@ export type Database = {
           etiqueta: string
           monto: number
         }[]
+      }
+      reservar_entrega_otp: {
+        Args: { p_id_entrega: string; p_telefono_e164: string }
+        Returns: Json
       }
       resumen_flota: { Args: { p_flota_id: string }; Returns: Json }
       sembrar_catalogo_cordoba: {
@@ -1054,6 +1126,7 @@ export type Database = {
         | "pagado"
         | "condonado"
         | "anulado"
+      estado_entrega_otp: "en_curso" | "enviada" | "fallida" | "limitada"
       estado_vehiculo: "activo" | "inactivo" | "vendido" | "baja"
       estado_vencimiento:
         | "pendiente"
@@ -1228,6 +1301,7 @@ export const Constants = {
         "condonado",
         "anulado",
       ],
+      estado_entrega_otp: ["en_curso", "enviada", "fallida", "limitada"],
       estado_vehiculo: ["activo", "inactivo", "vendido", "baja"],
       estado_vencimiento: [
         "pendiente",
