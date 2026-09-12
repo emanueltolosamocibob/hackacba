@@ -392,6 +392,25 @@ verify_jwt = true
 [functions.despachar-avisos]
 verify_jwt = true
 
+# ---------------------------------------------------------------------------
+# Edge Functions del alta por landing con OTP de WhatsApp
+#
+# `enviar-otp-whatsapp` es el Auth Send SMS Hook: lo llama Supabase Auth, que
+# tampoco manda un JWT de Supabase (igual que Telegram arriba). Con
+# verify_jwt en true ningun hook llegaria al codigo. Lo protege la firma
+# Standard Webhooks que se verifica con SEND_SMS_HOOK_SECRET, comparada en
+# `_compartido/alta/hook-sms.ts` antes de leer nada del payload.
+#
+# `finalizar-alta-landing` si lleva JWT: la llama el navegador con la sesion
+# que el propio usuario acaba de verificar por OTP.
+# ---------------------------------------------------------------------------
+
+[functions.enviar-otp-whatsapp]
+verify_jwt = false
+
+[functions.finalizar-alta-landing]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
