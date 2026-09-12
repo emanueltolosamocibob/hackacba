@@ -55,8 +55,16 @@ parciales y permite que la regla genere las cuotas sola.
 
 ## Puesta en marcha
 
-Requiere Node 20+ y el CLI de Supabase. **No requiere Docker**: se trabaja
-contra el proyecto en la nube.
+Requiere **Node >= 20.6** (por `--env-file`) y el [CLI de Supabase](https://supabase.com/docs/guides/local-development/cli/getting-started).
+Funciona igual en macOS, Linux y Windows. Hay un `.nvmrc`, así que con `nvm use`
+alcanza.
+
+```bash
+npm install
+```
+
+Iniciar sesión y vincular el proyecto (pide la contraseña de la base, que queda
+en el llavero del sistema):
 
 ```bash
 supabase login
@@ -66,7 +74,8 @@ supabase login
 supabase link --project-ref TU_PROJECT_REF
 ```
 
-Después, un `.env` en la raíz (está en `.gitignore`) con:
+Crear un `.env` en la raíz (está en `.gitignore`) copiando `.env.example`. Las
+tres claves salen del panel, en **Project Settings → API**:
 
 ```
 SUPABASE_URL=https://TU_REF.supabase.co
@@ -74,15 +83,38 @@ SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
+> `SUPABASE_SERVICE_ROLE_KEY` saltea RLS por completo. Va solo en `.env` local y
+> en los secretos del servidor. Nunca en el cliente ni en un commit.
+
 ```bash
-npm install && npm run db:push
+npm run db:push
 ```
+
+### Contra la nube o contra un stack local
+
+El flujo por defecto es **contra el proyecto en la nube**: no necesita Docker y
+es como se desarrolló todo esto (la máquina original no podía correr Docker).
+
+Si tenés Docker andando —lo normal en una Mac— podés levantar el stack local, y
+está bueno: resets instantáneos, sin red, sin cuota, y habilita `supabase test db`.
+
+```bash
+supabase start
+```
+
+**Aviso honesto: las migraciones nunca se corrieron contra el stack local.** Van
+a andar, pero si algo chilla, mirá primero `pg_cron` (la migración `0006` lo
+programa dentro de un bloque guardado), las políticas sobre `realtime.messages`
+de la `0005`, y el bucket de Storage de la `0004`. Si encontrás algo, arreglalo y
+dejalo anotado acá.
 
 ## Verificación
 
-No hay pgTAP porque `supabase test db` necesita el stack local en Docker. En su
-lugar hay scripts que corren contra el proyecto real, con usuarios y JWT
-reales — más fieles para lo que importa, que es cómo le va a pegar el cliente.
+No hay pgTAP: `supabase test db` necesita el stack local, y la máquina donde se
+escribió esto no podía correr Docker. En su lugar hay scripts que corren contra
+el proyecto real, con usuarios y JWT reales — más fieles para lo que importa, que
+es cómo le va a pegar el cliente. Si trabajás con el stack local, sumar pgTAP
+para las invariantes de esquema es una buena mejora.
 
 ```bash
 npm run verificar:todo

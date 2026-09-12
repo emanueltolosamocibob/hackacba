@@ -29,11 +29,15 @@ La próxima etapa es un bot de Telegram; más adelante, una Mini App en React + 
 
 Cosas que ya costaron un bug acá. Vale la pena leerlas antes de tocar la base.
 
-**1. No hay Docker en esta máquina.** `supabase start`, `supabase db reset` y
-`supabase test db` no funcionan: Docker Desktop no arranca (sockets AF_UNIX
-huérfanos, error 1920). Se trabaja contra el proyecto en la nube con
-`supabase db push`, y se verifica con `npm run verificar:todo`. Por eso no hay
+**1. El flujo por defecto es contra la nube, no contra un stack local.** Todo se
+desarrolló así porque la máquina original no podía correr Docker (Docker Desktop
+no arranca: sockets AF_UNIX huérfanos, error 1920). Se aplica con
+`supabase db push` y se verifica con `npm run verificar:todo`. Por eso no hay
 tests pgTAP.
+
+Si la máquina donde estás corriendo **sí** tiene Docker, `supabase start` es
+mejor opción. Pero las migraciones nunca se probaron contra el stack local:
+antes de afirmar que anda, corré `supabase db reset` y miralo.
 
 **2. Nunca `current_date` para una fecha de negocio.** El servidor corre en UTC
 y Argentina es UTC-3: entre las 21:00 y las 24:00 locales van por días distintos.
@@ -73,6 +77,7 @@ npm run db:push          # aplicar migraciones al proyecto en la nube
 npm run db:estado        # ver qué migraciones están aplicadas
 npm run db:tipos         # regenerar paquetes/compartido/src/tipos.ts
 npm run demo             # datos de demostración (--recrear para rehacerlos)
+npm run estado           # panel con lo que hay en la base ahora mismo
 npm run verificar:todo   # las tres baterías + chequeo de tipos
 ```
 
@@ -96,6 +101,7 @@ supabase/migrations/   0001-0015, en orden. El encabezado de cada una explica
 supabase/tests/        verificar.mjs (66) · verificar-alta.mjs (50)
                        verificar-realtime.mjs (6)
 supabase/semillas/     demo.mjs — flota realista de Córdoba
+herramientas/          estado.mjs — panel de lo que hay en la base
 paquetes/compartido/   tipos generados del esquema + esquemas zod + helpers
 ```
 

@@ -1,0 +1,23 @@
+# Fin de linea: LF en el repositorio, siempre y en todas las plataformas.
+# Sin esto depende de core.autocrlf de cada maquina, y alcanza con que un
+# desarrollador lo tenga distinto para ensuciar el historial con diffs enteros.
+* text=auto eol=lf
+
+*.sql   text eol=lf
+*.mjs   text eol=lf
+*.js    text eol=lf
+*.ts    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.toml  text eol=lf
+*.yml   text eol=lf
+*.sh    text eol=lf
+
+# Generado: no ensucia las revisiones ni cuenta como codigo escrito a mano.
+paquetes/compartido/src/tipos.ts linguist-generated=true
+package-lock.json                linguist-generated=true
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ico binary

@@ -15,10 +15,14 @@
     "verificar:tipos": "tsc --noEmit --project paquetes/compartido/tsconfig.json",
     "verificar:todo": "npm run verificar && npm run verificar:alta && npm run verificar:realtime && npm run verificar:tipos",
     "demo": "node --env-file=.env supabase/semillas/demo.mjs",
-    "verificar:alta": "node --env-file=.env supabase/tests/verificar-alta.mjs"
+    "verificar:alta": "node --env-file=.env supabase/tests/verificar-alta.mjs",
+    "estado": "node --env-file=.env herramientas/estado.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.116.0",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.6.0"
   }
 }
