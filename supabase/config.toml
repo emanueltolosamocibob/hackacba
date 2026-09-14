@@ -372,31 +372,10 @@ authorization_url_path = "/oauth/consent"
 allow_dynamic_registration = false
 
 # ---------------------------------------------------------------------------
-# Edge Functions del bot
-#
-# `telegram` es el webhook: lo llama Telegram, que no tiene un JWT de Supabase.
-# Con verify_jwt = true toda peticion seria rechazada antes de llegar al codigo.
-# Lo que la protege es la cabecera X-Telegram-Bot-Api-Secret-Token, que la
-# funcion verifica en la primera linea.
-#
-# Las otras dos si llevan JWT: las llama el propio webhook y pg_cron, ambos con
-# service_role.
-# ---------------------------------------------------------------------------
-
-[functions.telegram]
-verify_jwt = false
-
-[functions.agente]
-verify_jwt = true
-
-[functions.despachar-avisos]
-verify_jwt = true
-
-# ---------------------------------------------------------------------------
 # Edge Functions del alta por landing con OTP de WhatsApp
 #
 # `enviar-otp-whatsapp` es el Auth Send SMS Hook: lo llama Supabase Auth, que
-# tampoco manda un JWT de Supabase (igual que Telegram arriba). Con
+# no manda un JWT de Supabase. Con
 # verify_jwt en true ningun hook llegaria al codigo. Lo protege la firma
 # Standard Webhooks que se verifica con SEND_SMS_HOOK_SECRET, comparada en
 # `_compartido/alta/hook-sms.ts` antes de leer nada del payload.
@@ -413,7 +392,7 @@ verify_jwt = true
 
 # ---------------------------------------------------------------------------
 # wa-webhook: lo llama WAHA, que tampoco manda un JWT de Supabase (igual que
-# telegram y enviar-otp-whatsapp arriba). Lo protege el header
+# enviar-otp-whatsapp arriba). Lo protege el header
 # X-Webhook-Secret comparado con WA_WEBHOOK_SECRET en tiempo constante.
 # ---------------------------------------------------------------------------
 

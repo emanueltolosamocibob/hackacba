@@ -25,7 +25,15 @@ function bullet(o: ObligacionNormalizada): string {
   const fecha = fechaCorta(o.vencimiento ?? o.fechaInfraccion);
   const periodo = o.periodo ? ` (${o.periodo})` : '';
   const ref = o.referencia ? `${o.referencia} — ` : '';
-  return `• ${ref}${o.concepto}${periodo} — vence ${fecha} — ${pesosArgentinos(o.importe)}`;
+  // El descuento se nombra, nunca se resta: ver el comentario en tipos.ts.
+  const descuento = o.descuento ? `
+   Descuento informado: ${pesosArgentinos(o.descuento)}` : '';
+  return `• ${ref}${o.concepto}${periodo} — vence ${fecha} — ${pesosArgentinos(o.importe)}${descuento}`;
+}
+
+/** true si alguna obligacion trae descuento, para explicarlo una sola vez al pie. */
+function hayDescuentos(resultado: ResultadoConsulta): boolean {
+  return resultado.fuentes.some(f => f.obligaciones.some(o => o.descuento));
 }
 
 function totalObligaciones(obligaciones: ObligacionNormalizada[]): string {
@@ -58,7 +66,13 @@ function bloquePeaje(f: FuenteResultado, patente: string): string {
     return `*${f.nombre}*\nNo pudimos consultar peajes ahora. Probá de nuevo en unos minutos.`;
   }
   if (f.estado === 'requiere_usuario') {
-    return `*${f.nombre}*\nEsta consulta la tenés que hacer vos, el sitio no nos dejó confirmarla automáticamente.\n${f.url}\nPatente: ${patente}`;
+    return [
+      `*${f.nombre}*`,
+      'Esta la tenés que mirar vos: el sitio no nos dejó confirmarla automáticamente.',
+      'Entrá acá y pegá la patente:',
+      f.url ?? '',
+      patente,
+    ].join('\n');
   }
   return `*${f.nombre}*\nSin infracciones de peaje.`;
 }
@@ -69,7 +83,16 @@ function bloqueEstatica(f: FuenteResultado, patente: string): string {
     const etiqueta = f.id === 'rentas_cba' ? 'sin deuda' : 'al día';
     return `✅ *${f.nombre}*${cubre}: ${etiqueta}\nVer en el portal: ${f.url}`;
   }
-  return `*${f.nombre}*${cubre}\nEsta consulta la tenés que hacer vos, el sitio pide validación.\n${f.url}\nPatente: ${patente}`;
+  // No decimos "pide validación" a secas: la persona merece saber que no es una
+  // falla nuestra ni algo que se vaya a destrabar solo. El detalle tecnico de
+  // por que esta cerrado vive en fuentes/estaticas.ts.
+  return [
+    `*${f.nombre}*${cubre}`,
+    'Esta la tenés que consultar vos: el sitio pide una validación antiautomática que no podemos completar.',
+    'Entrá acá y pegá la patente:',
+    f.url ?? '',
+    patente,
+  ].join('\n');
 }
 
 export function formatearReporte(resultado: ResultadoConsulta): string {
@@ -89,6 +112,9 @@ export function formatearReporte(resultado: ResultadoConsulta): string {
     `Encontré esto para ${resultado.patente} 👇`,
     '',
     ...bloques.flatMap(b => [b, '']),
+    ...(hayDescuentos(resultado)
+      ? ['El descuento lo informa la Muni pero no está restado del importe: el portal cobra el saldo completo. Consultá ahí si te corresponde.']
+      : []),
     'Los montos incluyen recargos y cambian con el tiempo; el importe final es el del portal.',
     `Datos al ${dd}/${mm} ${hh}:${min}.`,
   ].join('\n');

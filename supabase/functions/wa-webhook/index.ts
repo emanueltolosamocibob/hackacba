@@ -2,7 +2,7 @@
 // wa-webhook: recibe eventos de WAHA. No lleva JWT de Supabase (WAHA no sabe
 // que existe Supabase Auth); lo protege el header X-Webhook-Secret comparado
 // con WA_WEBHOOK_SECRET (config.toml: verify_jwt = false, igual que el hook
-// de Send SMS y el webhook de Telegram, ver esos comentarios).
+// de Send SMS, ver ese comentario).
 //
 // Responde 200 apenas valida y clasifica el evento; el trabajo real (consultar
 // contexto, fuentes vehiculares, responder por WAHA) corre en

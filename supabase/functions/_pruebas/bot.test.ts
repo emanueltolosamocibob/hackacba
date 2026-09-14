@@ -1,4 +1,4 @@
-import { assertEquals, assertExists } from 'https://deno.land/std@0.224.0/assert/mod.ts';
+import { assertEquals, assertExists, assertStringIncludes } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import { clasificarEvento, interpretarTexto, secretoValido, telefonoDesdeChatId, mensajeFlota, mensajeLinkPago } from '../_compartido/bot/webhook.ts';
 import { extraerDominio, esComandoFlota, esComandoLinkPago, esConsultaDeudaFlota } from '../_compartido/bot/dominio.ts';
 import { normalizarMuni } from '../_compartido/bot/fuentes/muni.ts';
@@ -125,6 +125,64 @@ Deno.test('normalizarMuni mapea multas reales de AH827BR sin exponer el nombre d
   }
 });
 
+Deno.test('normalizarMuni expone el descuento de la Muni sin restarlo del importe', () => {
+  const r = normalizarMuni(fixtureMuni);
+  const conDescuento = r.obligaciones.filter(o => o.descuento);
+  assertEquals(conDescuento.length, 2);
+
+  // Lo que el portal cobra es el saldo: el descuento va al lado, nunca adentro.
+  const primera = conDescuento[0];
+  assertEquals(primera.importe, '13276.80');
+  assertEquals(primera.descuento, '8851.20');
+});
+
+Deno.test('normalizarMuni omite el descuento cuando es cero o no viene', () => {
+  const r = normalizarMuni({
+    status: { success: true },
+    data: {
+      multas: [
+        { ctacte_id: 1, anio: 2026, cuota: 1, saldo: 1000, descuento: 0, est: 'D' },
+        { ctacte_id: 2, anio: 2026, cuota: 1, saldo: 2000, est: 'D' },
+      ],
+    },
+  });
+  assertEquals(r.obligaciones.length, 2);
+  assertEquals(r.obligaciones[0].descuento, undefined);
+  assertEquals(r.obligaciones[1].descuento, undefined);
+});
+
+Deno.test('formatearReporte nombra el descuento y aclara que no esta restado, sin prometer ahorro', () => {
+  const texto = formatearReporte({
+    patente: 'AH827BR',
+    consultadoEn: new Date().toISOString(),
+    fuentes: [normalizarMuni(fixtureMuni), normalizarPeaje('no posee infracciones impagas'), rentasCba(), itv()],
+  });
+
+  assertStringIncludes(texto, 'Descuento informado: $8.851,20');
+  assertStringIncludes(texto, 'no está restado del importe');
+
+  // El total sigue siendo la suma de los saldos: 13276.80 + 19747.20.
+  assertStringIncludes(texto, '$33.024,00');
+
+  // Nada de prometer una condicion que no conocemos.
+  assertEquals(texto.includes('ahorr'), false);
+  assertEquals(texto.includes('pagando antes'), false);
+});
+
+Deno.test('formatearReporte no menciona descuentos cuando ninguna obligacion trae uno', () => {
+  const sinDescuento = normalizarMuni({
+    status: { success: true },
+    data: { multas: [{ ctacte_id: 1, anio: 2026, cuota: 1, saldo: 1000, est: 'D' }] },
+  });
+  const texto = formatearReporte({
+    patente: 'AB123CD',
+    consultadoEn: new Date().toISOString(),
+    fuentes: [sinDescuento, normalizarPeaje('no posee infracciones impagas'), rentasCba(), itv()],
+  });
+  assertEquals(texto.includes('Descuento'), false);
+  assertEquals(texto.includes('no está restado'), false);
+});
+
 Deno.test('normalizarMuni: status.success false es sin_datos', () => {
   const r = normalizarMuni({ status: { success: false } });
   assertEquals(r.estado, 'sin_datos');
@@ -181,7 +239,9 @@ Deno.test('formatearReporte nunca suma un total entre fuentes (el "total" de mun
   assertEquals(texto.match(/total/gi)?.length, 1);
   assertEquals(texto.includes('*Municipalidad de Córdoba*'), true);
   assertEquals(texto.includes('F0223966'), true);
-  assertEquals(texto.includes('Patente: AH827BR'), true);
+  // La patente va sola en su linea, sin prefijo: asi WhatsApp la deja copiar de
+  // un toque para pegarla en el portal que haya que abrir a mano.
+  assertEquals(texto.split('\n').filter(l => l === 'AH827BR').length >= 2, true);
   assertEquals(texto.includes('app.rentascordoba.gob.ar'), false);
 });
 

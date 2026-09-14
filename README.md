@@ -176,16 +176,22 @@ La tarea **encola** en `avisos`; el despacho lo hará la interfaz. Una fila con
 
 ## El bot
 
-El bot de Telegram está escrito, en `supabase/functions/`: el webhook con los
-comandos y el alta, el agente conversacional con Claude, y el despachador de la
-cola de avisos.
+El bot vive en WhatsApp, sobre WAHA, en `supabase/functions/`:
 
-**Falta desplegarlo.** Los cuatro pasos —migración, secretos, deploy y
-`setWebhook`— están en **[BOT.md](BOT.md)**, junto con el reparto de
-responsabilidades, cómo un chat obtiene un JWT y las firmas exactas de la API.
+- `wa-webhook` — recibe los mensajes, los clasifica y contesta
+- `enviar-otp-whatsapp` — el Auth Send SMS Hook que entrega el código del alta
+- `finalizar-alta-landing` — cierra el alta con el JWT del propio usuario
+
+El alta arranca en la web (`/agregar`): teléfono, OTP por WhatsApp, y queda
+vinculado. Desde ahí se le escribe al bot una patente, "flota", "deuda" o
+"link de pago".
 
 La lógica de negocio sigue en Postgres: las funciones conversan y despachan.
 `pg_cron` llama a `tarea_diaria()` sin intermediarios.
+
+> El canal Telegram se descartó. La base lo dejó atrás en la migración
+> `0016_vinculos_chat_neutral`, que reemplazó `vinculos_telegram` por
+> `vinculos_chat (canal, identificador_externo)`.
 
 ## Pendiente
 

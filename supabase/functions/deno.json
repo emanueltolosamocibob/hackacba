@@ -1,7 +1,5 @@
 {
   "imports": {
-    "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@^0.70.0",
-    "qrcode": "npm:qrcode@1.5.4",
     "zod": "npm:zod@^4.6.2"
   }
 }

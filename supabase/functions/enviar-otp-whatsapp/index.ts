@@ -5,9 +5,9 @@
 //
 // No lleva JWT de Supabase: Auth firma el pedido con Standard Webhooks
 // (`SEND_SMS_HOOK_SECRET`), no con un token de la plataforma. Por eso
-// `verify_jwt = false` en config.toml, igual que el webhook de Telegram
-// (ver el comentario ahi): con verify_jwt en true, ningun hook llegaria al
-// codigo. Lo que protege esta URL es la firma que verifica `manejarHookSms`.
+// `verify_jwt = false` en config.toml: con verify_jwt en true, ningun hook
+// llegaria al codigo. Lo que protege esta URL es la firma que verifica
+// `manejarHookSms`.
 //
 // La logica de negocio (verificar, reservar, mandar, cerrar) vive en
 // `_compartido/alta/hook-sms.ts`, con las dependencias inyectadas aca. Eso es

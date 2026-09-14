@@ -4,13 +4,10 @@ Control de las obligaciones de pago de cada vehículo de una o más flotas:
 impuesto automotor de Rentas Córdoba, tasa municipal, seguro, VTV, GNC, multas.
 El problema no es contabilidad, es **no perder un vencimiento**.
 
-**Estado: el backend está terminado y verificado. El bot de Telegram está
-construido y falta desplegarlo.** La web tiene un scaffold que compila y se
-despliega en Vercel, todavía sin diseñar.
+**Estado: el backend está terminado y verificado. El canal es WhatsApp
+(WAHA).** La web tiene el alta con OTP y se despliega en Vercel.
 
 - [README.md](README.md) — modelo de datos y puesta en marcha
-- [BOT.md](BOT.md) — el bot: superficie de la API, alta de usuarios, despacho
-  de avisos y la puesta en marcha
 - [PRODUCT.md](PRODUCT.md) — qué es el producto y qué decisiones están tomadas
 
 ---
@@ -70,11 +67,12 @@ tareas de sistema: cron, despacho de avisos y el alta de usuarios.
 el medio, después del código de área: comparar por los últimos dígitos no
 alcanza. Usar `clave_telefono()`, no reimplementarlo. Ver la migración `0015`.
 
-**9. El webhook de Telegram corre con `verify_jwt = false`.** Telegram no tiene
-un JWT de Supabase; con la verificación puesta, ningún update llegaría al
-código. Lo que lo protege es la cabecera `X-Telegram-Bot-Api-Secret-Token`, que
-se compara en la primera línea de la función. Si esa comparación se cae, la URL
-queda abierta.
+**9. `wa-webhook` corre con `verify_jwt = false`.** WAHA no tiene un JWT de
+Supabase; con la verificación puesta, ningún evento llegaría al código. Lo que
+lo protege es la cabecera `X-Webhook-Secret`, comparada en tiempo constante
+contra `WA_WEBHOOK_SECRET` antes de leer nada del payload. Si esa comparación
+se cae, la URL queda abierta. Lo mismo vale para `enviar-otp-whatsapp`, que en
+su lugar verifica la firma Standard Webhooks de Supabase Auth.
 
 **10. Las Edge Functions son isolates efímeros y hay más de uno.** El callback
 de un botón llega en otra invocación que casi seguro corre en otro isolate: un
@@ -116,13 +114,13 @@ Al agregar una migración, sumar su verificación al script que corresponda en
 ## Cómo está organizado
 
 ```
-supabase/migrations/   0001-0016, en orden. El encabezado de cada una explica
+supabase/migrations/   0001-0020, en orden. El encabezado de cada una explica
                        por qué existe; las 0007+ documentan el bug que corrigen
-supabase/tests/        verificar.mjs (66) · verificar-alta.mjs (50)
-                       verificar-bot.mjs (30) · verificar-realtime.mjs (6)
+supabase/tests/        verificar.mjs · verificar-alta.mjs
+                       verificar-bot-whatsapp.mjs · verificar-realtime.mjs
 supabase/semillas/     demo.mjs — flota realista de Córdoba
-supabase/functions/    el bot: telegram (webhook), agente (tool calling con
-                       Claude), despachar-avisos, y _compartido/
+supabase/functions/    el bot: wa-webhook, enviar-otp-whatsapp,
+                       finalizar-alta-landing, y _compartido/
 herramientas/          estado.mjs — panel de lo que hay en la base
 paquetes/compartido/   tipos generados del esquema + esquemas zod + helpers
 paquetes/web/          la web: scaffold Vite + React + TS con las dos rutas de
