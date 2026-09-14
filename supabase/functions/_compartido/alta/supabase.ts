@@ -1,11 +1,6 @@
 // =============================================================================
 // Cliente minimo hacia PostgREST/RPC para las funciones de alta.
 //
-// No se reusa `_compartido/rest.ts`/`entorno.ts`: ese modulo exige, al
-// cargarse, los secretos del bot de Telegram (TELEGRAM_BOT_TOKEN,
-// TELEGRAM_SECRETO_WEBHOOK). Una funcion de alta no los tiene configurados y
-// no deberia depender de ellos para arrancar ni para poder probarse.
-//
 // Los secretos se leen recien al invocar cada funcion (no al cargar el
 // modulo): eso permite importar este archivo en tests sin que haga falta
 // simular todo el entorno de una Edge Function.

@@ -141,13 +141,11 @@ tareas de sistema: cron, despacho de avisos y el alta.
 
 ### Trabajo pendiente que este producto todavía no tiene
 
-- **El canal WhatsApp no está construido.** Lo que está escrito y verificado es
-  el bot de **Telegram**: la Edge Function `telegram`, las tablas
-  `vinculos_telegram`, y las funciones `contexto_telegram`,
-  `desvincular_telegram`, `cambiar_organizacion_activa` (migraciones
-  `0012`–`0016`). El canal se reemplaza por WhatsApp: cambia el webhook, el
-  vínculo chat↔teléfono y el despacho de avisos. La lógica de negocio en
-  Postgres no se toca.
+- **El canal es WhatsApp, sobre WAHA** (`wa-webhook`, `enviar-otp-whatsapp`,
+  `finalizar-alta-landing`). El canal Telegram se descartó: la migración
+  `0016_vinculos_chat_neutral` reemplazó `vinculos_telegram` por
+  `vinculos_chat (canal, identificador_externo)`, y el código del bot de
+  Telegram se eliminó del repo. La lógica de negocio en Postgres no se tocó.
 - **WAHA es una API no oficial de WhatsApp.** Es la decisión tomada para enviar
   el código de verificación. Su consecuencia es parte del producto y no se puede
   disimular: Meta puede bloquear el número, no hay garantía de entrega ni de
@@ -192,7 +190,7 @@ tareas de sistema: cron, despacho de avisos y el alta.
 - **Las 152 comprobaciones** de `supabase/tests/` corren contra el proyecto real
   con usuarios y JWT reales. Es un hecho, y se puede nombrar.
 - **La documentación del proyecto:** `README.md` (modelo de datos y puesta en
-  marcha), `BOT.md` (superficie de la API, alta y despacho), `CLAUDE.md`.
+  marcha) y `CLAUDE.md`.
 
 **Lo que NO existe y no se debe fabricar:**
 
