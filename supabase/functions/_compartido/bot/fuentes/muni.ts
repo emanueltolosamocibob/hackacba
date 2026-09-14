@@ -17,6 +17,7 @@ interface ItemMuni {
   fchvenc?: string;
   saldo?: number | string;
   nominal?: number | string;
+  descuento?: number | string;
   ref?: string;
   referencia?: string;
   causa?: string;
@@ -45,6 +46,7 @@ function estaVencida(fechaIso: string | undefined, esD: boolean): boolean {
 
 function normalizarItem(item: ItemMuni, tipo: TipoObligacion): ObligacionNormalizada {
   const esD = item.est === 'D';
+  const descuento = Number(item.descuento ?? 0);
   return {
     tipo,
     concepto: item.infrac ?? (tipo === 'impuesto' ? `Impuesto automotor cuota ${item.cuota ?? ''}`.trim() : tipo),
@@ -55,6 +57,9 @@ function normalizarItem(item: ItemMuni, tipo: TipoObligacion): ObligacionNormali
     estado: estaVencida(item.fchvenc, esD) ? 'vencida' : 'a_vencer',
     referencia: item.ref ?? item.referencia ?? item.causa ?? null,
     ...(item.infrac_fecha ? { fechaInfraccion: item.infrac_fecha } : {}),
+    ...(Number.isFinite(descuento) && descuento > 0
+      ? { descuento: formatearImporte(descuento) }
+      : {}),
     origen: { fuente: 'muni_cordoba', idOrigen: String(item.ctacte_id ?? '') },
   };
 }

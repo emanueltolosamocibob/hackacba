@@ -18,6 +18,15 @@ export interface ObligacionNormalizada {
   estado: EstadoObligacion;
   referencia: string | null;
   fechaInfraccion?: string;
+  /**
+   * El "Descuento" que informa la Muni, solo cuando es > 0.
+   *
+   * NO esta restado de `importe`, y no se sabe desde afuera como se obtiene.
+   * El propio portal lo muestra como una columna aparte y su checkout cobra el
+   * saldo entero: `totalGeneral += parseFloat(item.saldo)`, sin restar nada.
+   * Por eso viaja como dato suelto y el mensaje no promete ningun ahorro.
+   */
+  descuento?: string;
   origen: { fuente: string; idOrigen: string };
 }
 
