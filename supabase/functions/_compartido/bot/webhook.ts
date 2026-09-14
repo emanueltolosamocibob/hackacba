@@ -112,11 +112,23 @@ export function mensajeFlota(dominios: string[]): string {
   return `Tu flota:\n${dominios.map(d => `• ${d}`).join('\n')}`;
 }
 
-// El portal municipal no acepta la patente por query string (verificado en el
-// navegador: `/automotor?identificador=` carga el campo vacio). Lo que si
-// existe es una pantalla de carga por rubro: `/multas` (elegir "Rodado" y
-// cargar la patente) y `/automotor` (tasa automotor). El mensaje manda esas
-// pantallas, no la raiz, y repite la patente en su propia linea para copiarla.
+// El portal municipal no acepta la patente por query string, y no hay nombre de
+// parametro que la haga andar: no es que `?identificador=` este mal escrito, es
+// que la pagina NUNCA lee la URL. Verificado sobre el bundle (chunk del
+// buscador, 14/09/2026): cero `location.search`, cero `router.query`, cero
+// `useSearchParams`; el unico `URLSearchParams` arma el request saliente a
+// `/deuda/consultar` desde el estado del input. Es una SPA y la patente solo
+// entra tecleada. No volver a probar nombres de parametro.
+//
+// El unico punto del portal que si toma parametro es
+// `/pasarelladepago/detalle?pag_id=`, y ese `pag_id` existe recien despues de
+// la intencion de pago, del otro lado del reCAPTCHA. No sirve como entrada.
+//
+// Lo que si existe es una pantalla de carga por rubro: `/multas` (elegir
+// "Rodado" y cargar la patente) y `/automotor` (tasa automotor). El mensaje
+// manda esas pantallas, no la raiz, y repite la patente en su propia linea:
+// WhatsApp la deja copiar de un toque, que es lo mas cerca del prellenado que
+// se puede llegar.
 export const URL_PAGO_MULTAS_MUNI = 'https://tributariomuni.cordoba.gob.ar/multas';
 export const URL_PAGO_MUNI = 'https://tributariomuni.cordoba.gob.ar/automotor';
 
